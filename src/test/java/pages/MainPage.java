@@ -1,71 +1,98 @@
 package pages;
 
 import com.codeborne.selenide.ElementsCollection;
-import com.codeborne.selenide.SelenideElement;
 import elements.Button;
 import elements.Input;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.codeborne.selenide.CollectionCondition.sizeGreaterThan;
 import static com.codeborne.selenide.Selenide.$$x;
 
+/**
+ * Page Object главной страницы AliExpress.
+ * Автор: Шакуров 4382.
+ */
 public class MainPage extends BasePage {
 
     private static final String URL = "https://aliexpress.ru";
 
     private final Input searchInput = Input.byName("SearchText");
     private final Button searchButton = Button.byText("Найти");
+    private final ElementsCollection searchSuggestions = $$x("//div[@ae_button_type='auto_suggestion' and @ae_object_type='keyword']");
 
-    // Элементы для работы с подсказками
-    private final ElementsCollection suggestions = $$x("//div[contains(@class, 'suggestion')]");
-
+    /**
+     * Открывает главную страницу AliExpress.
+     */
     public MainPage open() {
         open(URL);
         return this;
     }
 
+    /**
+     * Выполняет поиск товара по переданному запросу.
+     */
     public SearchResultPage search(String query) {
         searchInput.fill(query);
         searchButton.click();
         return new SearchResultPage();
     }
 
+    /**
+     * Очищает строку поиска.
+     */
     public void clearSearch() {
         searchInput.clear();
     }
 
+    /**
+     * Заполняет строку поиска без отправки формы.
+     */
     public void fillSearch(String query) {
         searchInput.fill(query);
     }
 
-    public void fillSearchAndWaitSuggestions(String query) {
+    /**
+     * Вводит часть запроса и динамически ждет появления поисковых подсказок.
+     */
+    public MainPage fillSearchAndWaitSuggestions(String query) {
         searchInput.fill(query);
-        // Ожидание появления подсказок (реализовано через Selenide)
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        searchSuggestions.shouldHave(sizeGreaterThan(0), Duration.ofSeconds(10));
+        return this;
     }
 
+    /**
+     * Возвращает количество найденных подсказок.
+     */
     public int getSuggestionsCount() {
-        return suggestions.size();
+        return searchSuggestions.size();
     }
 
-    public boolean allSuggestionsContain(String word) {
-        if (suggestions.isEmpty()) {
-            return false;
-        }
-        for (SelenideElement suggestion : suggestions) {
-            if (!suggestion.getText().toLowerCase().contains(word.toLowerCase())) {
-                return false;
+    /**
+     * Возвращает тексты поисковых подсказок.
+     */
+    public List<String> getSuggestionValues() {
+        List<String> suggestions = new ArrayList<>();
+        for (int i = 0; i < searchSuggestions.size(); i++) {
+            String suggestion = searchSuggestions.get(i).getAttribute("ae_object_value");
+            if (suggestion == null) {
+                suggestion = searchSuggestions.get(i).getText();
             }
+            suggestions.add(suggestion);
         }
-        return true;
+        return suggestions;
     }
 
+    /**
+     * Возвращает текст первой поисковой подсказки.
+     */
     public String getFirstSuggestionText() {
-        if (suggestions.isEmpty()) {
+        if (searchSuggestions.isEmpty()) {
             return "Нет подсказок";
         }
-        return suggestions.first().getText();
+        String suggestion = searchSuggestions.first().getAttribute("ae_object_value");
+        return suggestion == null ? searchSuggestions.first().getText() : suggestion;
     }
 }

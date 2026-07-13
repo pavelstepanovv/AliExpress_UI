@@ -1,50 +1,90 @@
 package pages;
 
-import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.ElementsCollection;
 import com.codeborne.selenide.SelenideElement;
-import elements.Button;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
-import static com.codeborne.selenide.Selenide.$$x;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static com.codeborne.selenide.CollectionCondition.sizeGreaterThan;
 import static com.codeborne.selenide.Selenide.$x;
+import static com.codeborne.selenide.Selenide.$$x;
+import static com.codeborne.selenide.Selenide.switchTo;
+import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
 
+/**
+ * Page Object страницы результатов поиска AliExpress.
+ * Автор: Шакуров 4382.
+ */
 public class SearchResultPage extends BasePage {
 
     private final ElementsCollection productCards = $$x("//a[contains(@class, 'universalSnippetLink')]");
+    private final SelenideElement maxPriceInput = $x("(//div[contains(@class, 'PriceBlock')]//input)[2]");
 
+    /**
+     * Проверяет, что в поисковой выдаче появились товары.
+     */
     public boolean hasProducts() {
-        return !productCards.isEmpty();
+        try {
+            waitUntilProductsLoaded();
+            return true;
+        } catch (AssertionError e) {
+            return false;
+        }
     }
 
+    /**
+     * Ждет появления товаров в поисковой выдаче.
+     */
+    public SearchResultPage waitUntilProductsLoaded() {
+        productCards.shouldHave(sizeGreaterThan(0), Duration.ofSeconds(15));
+        return this;
+    }
+
+    /**
+     * Возвращает количество загруженных карточек товаров.
+     */
     public int getProductsCount() {
+        waitUntilProductsLoaded();
         return productCards.size();
     }
 
-    public boolean hasProductContainingWord(String word) {
-        if (productCards.isEmpty()) {
-            return false;
-        }
-
+    /**
+     * Возвращает названия загруженных товаров.
+     */
+    public List<String> getProductTitles() {
+        waitUntilProductsLoaded();
+        List<String> titles = new ArrayList<>();
         for (SelenideElement card : productCards) {
             String title = card
                     .$x(".//div[@data-type='PartWrap-Text'][@title]")
                     .getAttribute("title");
 
-            if (title != null && title.toLowerCase().contains(word.toLowerCase())) {
-                return true;
+            if (title != null && !title.isEmpty()) {
+                titles.add(title);
             }
         }
-        return false;
+        return titles;
     }
 
+    /**
+     * Возвращает первую карточку товара.
+     */
     public SelenideElement getFirstProduct() {
+        waitUntilProductsLoaded();
         return productCards.first();
     }
 
+    /**
+     * Возвращает название первого товара.
+     */
     public String getFirstProductTitle() {
-        if (productCards.isEmpty()) {
-            return "Нет товаров";
-        }
+        waitUntilProductsLoaded();
         SelenideElement firstCard = productCards.first();
         String title = firstCard
                 .$x(".//div[@data-type='PartWrap-Text'][@title]")
@@ -58,69 +98,88 @@ public class SearchResultPage extends BasePage {
         return title;
     }
 
+    /**
+     * Возвращает цену первого товара.
+     */
     public String getFirstProductPrice() {
-        if (productCards.isEmpty()) {
-            return "Нет цены";
-        }
+        waitUntilProductsLoaded();
         return productCards.first()
                 .$x(".//div[@data-type='PartWrap-Text'][contains(@style, 'font-size: 21px')]")
                 .getText();
     }
 
-    public boolean allProductsHavePriceLessThan(int maxPrice) {
-        if (productCards.isEmpty()) {
-            return false;
-        }
-
+    /**
+     * Возвращает распознанные цены загруженных товаров.
+     */
+    public List<Integer> getProductPrices() {
+        waitUntilProductsLoaded();
+        List<Integer> prices = new ArrayList<>();
         for (SelenideElement card : productCards) {
             String priceText = card
                     .$x(".//div[@data-type='PartWrap-Text'][contains(@style, 'font-size: 21px')]")
                     .getText();
 
-            // getText() никогда не возвращает null, только пустую строку
-            if (priceText.isEmpty()) {
+            if (priceText == null || priceText.isEmpty()) {
                 continue;
             }
 
             try {
-                int price = Integer.parseInt(priceText.replaceAll("[^0-9]", ""));
-                if (price > maxPrice) {
-                    return false;
-                }
+                prices.add(extractFirstPrice(priceText));
             } catch (NumberFormatException e) {
-                // Если не удалось распарсить цену, пропускаем товар
+                continue;
             }
         }
-        return true;
+        return prices;
     }
 
+    /**
+     * Открывает первый товар из поисковой выдачи.
+     */
     public ProductPage openFirstProduct() {
-        productCards.first().click();
-        return new ProductPage();
+        waitUntilProductsLoaded();
+        Set<String> oldWindowHandles = getWebDriver().getWindowHandles();
+        productCards.first().scrollIntoView(true).click();
+        switchToNewWindowIfOpened(oldWindowHandles);
+        return new ProductPage().waitUntilOpened();
     }
 
-    public void filterByMaxPrice(int maxPrice) {
-        // Находим все поля с классом haze-input
-        ElementsCollection priceInputs = $$x("//input[contains(@class, 'haze-input_Input__input')]");
+    /**
+     * Вводит верхнюю границу цены и ждет применения фильтра к выдаче.
+     */
+    public SearchResultPage filterByMaxPrice(int maxPrice) {
+        maxPriceInput.scrollIntoView(true).setValue(String.valueOf(maxPrice)).pressEnter();
+        new WebDriverWait(getWebDriver(), Duration.ofSeconds(20))
+                .until(driver -> {
+                    List<Integer> prices = getProductPrices();
+                    return !prices.isEmpty() && prices.stream().allMatch(price -> price <= maxPrice);
+                });
+        return this;
+    }
 
-        if (priceInputs.size() < 2) {
-            throw new RuntimeException("Не найдено поле 'до' для фильтрации по цене");
+    /**
+     * Извлекает первое число из строки цены.
+     */
+    private int extractFirstPrice(String priceText) {
+        Matcher matcher = Pattern.compile("\\d[\\d\\s]*").matcher(priceText);
+        if (!matcher.find()) {
+            throw new NumberFormatException("Price not found: " + priceText);
         }
+        return Integer.parseInt(matcher.group().replaceAll("\\s", ""));
+    }
 
-        // Берём второе поле (индекс 1) — это поле "до"
-        SelenideElement priceToInput = priceInputs.get(1);
+    /**
+     * Переключается на новую вкладку товара, если сайт открыл карточку в отдельном окне.
+     */
+    private void switchToNewWindowIfOpened(Set<String> oldWindowHandles) {
+        new WebDriverWait(getWebDriver(), Duration.ofSeconds(10))
+                .until(driver -> driver.getWindowHandles().size() > oldWindowHandles.size()
+                        || !driver.getCurrentUrl().contains("wholesale"));
 
-        // Скроллим до поля, чтобы оно стало видимым
-        priceToInput.scrollIntoView(true);
-
-        // Небольшая пауза после скролла
-        Selenide.sleep(1500);
-
-        // Вводим значение
-        priceToInput.clear();
-        priceToInput.sendKeys(String.valueOf(maxPrice));
-
-        // Нажимаем Enter для применения фильтра
-        priceToInput.pressEnter();
+        for (String windowHandle : getWebDriver().getWindowHandles()) {
+            if (!oldWindowHandles.contains(windowHandle)) {
+                switchTo().window(windowHandle);
+                return;
+            }
+        }
     }
 }
