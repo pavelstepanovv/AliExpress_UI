@@ -7,10 +7,19 @@ import org.openqa.selenium.chrome.ChromeOptions;
 
 import static com.codeborne.selenide.Selenide.closeWebDriver;
 
-public class BaseTest {
+/**
+ * Базовый класс, от которого наследуются все классы-тесты.
+ * Настраивает браузер перед каждым тестом и закрывает его после.
+ */
+public abstract class BaseTest {
 
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+    /**
+     * Открывается Chrome, настраивается размер окна, задаются динамические ожидания.
+     */
     @BeforeEach
     public void setUp() {
+        // Настройка браузера
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-blink-features=AutomationControlled");
         options.addArguments("--no-sandbox");
@@ -20,11 +29,18 @@ public class BaseTest {
 
         Configuration.browser = "chrome";
         Configuration.headless = false;
-        Configuration.timeout = 10000;
+
+        // Динамические ожидания
+        Configuration.timeout = 10000;          // максимум 10 секунд
+        Configuration.pollingInterval = 500;    // проверка каждые 500 мс
+
         Configuration.browserSize = "1920x1080";
         Configuration.browserCapabilities = options;
     }
 
+    /**
+     * Закрывает браузер после каждого теста.
+     */
     @AfterEach
     public void tearDown() {
         closeWebDriver();
