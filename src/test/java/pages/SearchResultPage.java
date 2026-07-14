@@ -1,34 +1,57 @@
 package pages;
 
-import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.ElementsCollection;
 import com.codeborne.selenide.SelenideElement;
-import elements.Button;
 
 import static com.codeborne.selenide.Selenide.$$x;
-import static com.codeborne.selenide.Selenide.$x;
 
+/**
+ * Страница результатов поиска.
+ * Содержит список карточек товаров и методы для работы с ними.
+ */
 public class SearchResultPage extends BasePage {
 
-    private final ElementsCollection productCards = $$x("//a[contains(@class, 'universalSnippetLink')]");
+    // СТАТИЧЕСКИЕ ПОЛЯ (локаторы)
+    private static final String PRODUCT_CARDS_XPATH = "//a[contains(@class, 'universalSnippetLink')]";
+    private static final String PRODUCT_TITLE_XPATH = ".//div[@data-type='PartWrap-Text'][@title]";
+    private static final String PRODUCT_TITLE_FALLBACK_XPATH = ".//div[@data-type='PartWrap-Text'][contains(@style, 'line-clamp: 2')]";
+    private static final String PRODUCT_PRICE_XPATH = ".//div[@data-type='PartWrap-Text'][contains(@style, 'font-size: 21px')]";
 
+    // ПОЛЯ ЭКЗЕМПЛЯРА
+    private final ElementsCollection productCards = $$x(PRODUCT_CARDS_XPATH);
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+    /**
+     * Проверяет, есть ли на странице хотя бы один товар.
+     *
+     * Возвращает: true, если товары есть
+     */
     public boolean hasProducts() {
         return !productCards.isEmpty();
     }
 
+    /**
+     * Возвращает количество товаров на странице.
+     *
+     * Возвращает: количество карточек товаров
+     */
     public int getProductsCount() {
         return productCards.size();
     }
 
+    /**
+     * Проверяет, есть ли хотя бы один товар с заданным словом в названии.
+     *
+     * Параметры: word слово, которое должно быть в названии
+     * Возвращает: true, если есть хотя бы один такой товар
+     */
     public boolean hasProductContainingWord(String word) {
         if (productCards.isEmpty()) {
             return false;
         }
 
         for (SelenideElement card : productCards) {
-            String title = card
-                    .$x(".//div[@data-type='PartWrap-Text'][@title]")
-                    .getAttribute("title");
+            String title = card.$x(PRODUCT_TITLE_XPATH).getAttribute("title");
 
             if (title != null && title.toLowerCase().contains(word.toLowerCase())) {
                 return true;
@@ -37,90 +60,37 @@ public class SearchResultPage extends BasePage {
         return false;
     }
 
-    public SelenideElement getFirstProduct() {
-        return productCards.first();
-    }
-
+    /**
+     * Возвращает название первого товара на странице.
+     *
+     * Возвращает: название товара или "Нет товаров"
+     */
     public String getFirstProductTitle() {
         if (productCards.isEmpty()) {
             return "Нет товаров";
         }
+
         SelenideElement firstCard = productCards.first();
-        String title = firstCard
-                .$x(".//div[@data-type='PartWrap-Text'][@title]")
-                .getAttribute("title");
+
+        String title = firstCard.$x(PRODUCT_TITLE_XPATH).getAttribute("title");
 
         if (title == null || title.isEmpty()) {
-            title = firstCard
-                    .$x(".//div[@data-type='PartWrap-Text'][contains(@style, 'line-clamp: 2')]")
-                    .getText();
+            title = firstCard.$x(PRODUCT_TITLE_FALLBACK_XPATH).getText();
         }
+
         return title;
     }
 
+    /**
+     * Возвращает цену первого товара на странице.
+     *
+     * Возвращает: цену товара или "Нет цены"
+     */
     public String getFirstProductPrice() {
         if (productCards.isEmpty()) {
             return "Нет цены";
         }
-        return productCards.first()
-                .$x(".//div[@data-type='PartWrap-Text'][contains(@style, 'font-size: 21px')]")
-                .getText();
-    }
 
-    public boolean allProductsHavePriceLessThan(int maxPrice) {
-        if (productCards.isEmpty()) {
-            return false;
-        }
-
-        for (SelenideElement card : productCards) {
-            String priceText = card
-                    .$x(".//div[@data-type='PartWrap-Text'][contains(@style, 'font-size: 21px')]")
-                    .getText();
-
-            // getText() никогда не возвращает null, только пустую строку
-            if (priceText.isEmpty()) {
-                continue;
-            }
-
-            try {
-                int price = Integer.parseInt(priceText.replaceAll("[^0-9]", ""));
-                if (price > maxPrice) {
-                    return false;
-                }
-            } catch (NumberFormatException e) {
-                // Если не удалось распарсить цену, пропускаем товар
-            }
-        }
-        return true;
-    }
-
-    public ProductPage openFirstProduct() {
-        productCards.first().click();
-        return new ProductPage();
-    }
-
-    public void filterByMaxPrice(int maxPrice) {
-        // Находим все поля с классом haze-input
-        ElementsCollection priceInputs = $$x("//input[contains(@class, 'haze-input_Input__input')]");
-
-        if (priceInputs.size() < 2) {
-            throw new RuntimeException("Не найдено поле 'до' для фильтрации по цене");
-        }
-
-        // Берём второе поле (индекс 1) — это поле "до"
-        SelenideElement priceToInput = priceInputs.get(1);
-
-        // Скроллим до поля, чтобы оно стало видимым
-        priceToInput.scrollIntoView(true);
-
-        // Небольшая пауза после скролла
-        Selenide.sleep(1500);
-
-        // Вводим значение
-        priceToInput.clear();
-        priceToInput.sendKeys(String.valueOf(maxPrice));
-
-        // Нажимаем Enter для применения фильтра
-        priceToInput.pressEnter();
+        return productCards.first().$x(PRODUCT_PRICE_XPATH).getText();
     }
 }
