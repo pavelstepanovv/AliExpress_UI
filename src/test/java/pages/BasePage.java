@@ -2,16 +2,26 @@ package pages;
 
 import com.codeborne.selenide.Selenide;
 
-public class BasePage {
-
-    public static void open(String url) {
+/**
+ * Базовый абстрактный класс, от которого наследуются все классы страниц.
+ * Содержит общие методы: открытие URL, обновление, получение заголовка.
+ */
+public abstract class BasePage {
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+    /**
+     * Открывает указанный URL в браузере.
+     *
+     * Параметры: url адрес страницы
+     */
+    protected void open(String url) {
         Selenide.open(url);
     }
 
-    public void refresh() {
-        Selenide.refresh();
-    }
-
+    /**
+     * Возвращает заголовок текущей страницы.
+     *
+     * Возвращает: заголовок страницы
+     */
     public String getTitle() {
         return Selenide.title();
     }
