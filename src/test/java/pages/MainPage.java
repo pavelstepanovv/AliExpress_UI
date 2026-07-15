@@ -3,6 +3,7 @@ package pages;
 import com.codeborne.selenide.ElementsCollection;
 import elements.Button;
 import elements.Input;
+import elements.Item;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -23,6 +24,13 @@ public class MainPage extends BasePage {
     private final Input searchInput = Input.byName("SearchText");
     private final Button searchButton = Button.byText("Найти");
     private final ElementsCollection searchSuggestions = $$x(SEARCH_SUGGESTIONS_XPATH);
+    // та же кнопка поиска, но найденная по классу: её текст меняется после смены языка
+    private final Button searchSubmitButton = Button.byClass("RedSearchBar_RedSearchBar__submit");
+    private final Button clearSearchButton = Button.byClass("RedSearchBar_RedSearchBar__reset");
+    // в шапке несколько элементов с этим классом (валюта, язык, город), поэтому ищем ещё и по тексту
+    private final Item languageSwitcher = Item.byClassAndText("ShipToHeaderItem_ShipToHeaderItem__element", "RU");
+    private final Item englishOption = Item.byClassAndText("ShipToHeaderItem_List__element", "English");
+    private final Item locationPopupBackdrop = Item.byClass("ShipToHeaderItem_Backdrop__background");
 
     /**
      * Открывает главную страницу AliExpress.
@@ -84,5 +92,52 @@ public class MainPage extends BasePage {
             suggestions.add(suggestion);
         }
         return suggestions;
+    }
+
+    /**
+     * Закрывает попап выбора региона, если он появился.
+     * Этот попап иногда показывается при первом открытии сайта
+     * и перекрывает другие элементы страницы.
+     */
+    public MainPage closeLocationPopupIfPresent() {
+        // динамическое ожидание: проверяем, появится ли попап в течение 3 секунд
+        if (locationPopupBackdrop.isDisplayed(Duration.ofSeconds(3))) {
+            locationPopupBackdrop.click();
+            locationPopupBackdrop.waitUntilHidden();
+        }
+        return this;
+    }
+
+    /**
+     * Нажимает кнопку очистки поля поиска (крестик).
+     */
+    public void clickClearSearch() {
+        clearSearchButton.click();
+    }
+
+    /**
+     * Возвращает текст, который сейчас введён в поле поиска.
+     */
+    public String getSearchFieldValue() {
+        return searchInput.getValue();
+    }
+
+    /**
+     * Переключает язык интерфейса на английский.
+     * Открывает переключатель языка в шапке и выбирает "English".
+     */
+    public void switchLanguageToEnglish() {
+        languageSwitcher.click();
+        englishOption.click();
+        // динамическое ожидание: список языков должен закрыться после выбора
+        englishOption.waitUntilHidden();
+    }
+
+    /**
+     * Возвращает текст кнопки поиска.
+     * После смены языка текст меняется с "Найти" на "Find".
+     */
+    public String getSearchButtonText() {
+        return searchSubmitButton.getText();
     }
 }

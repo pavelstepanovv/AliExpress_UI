@@ -21,7 +21,7 @@ public class AddProductToCartAndChangeQuantityTest extends BaseTest {
     @Test
     public void testAddProductToCartAndChangeQuantity() {
         MainPage mainPage = new MainPage().open();
-        SearchResultPage results = mainPage.search(USB_C_CABLE_QUERY);
+        SearchResultPage results = mainPage.search(CART_PRODUCT_QUERY);
         ProductPage productPage = results.openFirstProduct();
 
         productPage.addToCart();
@@ -32,8 +32,8 @@ public class AddProductToCartAndChangeQuantityTest extends BaseTest {
                 .waitTotalRecalculatedForQuantity(CART_PRODUCT_QUANTITY);
 
         assertThat(cartPage.getProductTitle())
-                .as("В корзине должен отображаться добавленный кабель")
-                .containsIgnoringCase("кабель");
+                .as("В корзине должен отображаться добавленный товар")
+                .containsIgnoringCase(CART_PRODUCT_EXPECTED_WORD);
 
         assertThat(cartPage.getProductQuantity())
                 .as("Количество товара в корзине должно быть равно 3")

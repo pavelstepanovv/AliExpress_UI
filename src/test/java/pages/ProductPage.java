@@ -2,6 +2,8 @@ package pages;
 
 import com.codeborne.selenide.ElementsCollection;
 import com.codeborne.selenide.SelenideElement;
+import elements.Item;
+import elements.Link;
 
 import java.time.Duration;
 
@@ -21,6 +23,13 @@ public class ProductPage extends BasePage {
     private final ElementsCollection addToCartButtons = $$x("//button[@data-testid='toCartBtn' or @data-button-add-to-cart='true']");
     private final ElementsCollection understoodButtons = $$x("//button[normalize-space()='Понятно' or .//*[normalize-space()='Понятно']]");
     private final SelenideElement cartLink = $x("//a[.//span[normalize-space()='Корзина'] or contains(normalize-space(), 'Корзина')]");
+    // на странице есть вторая скрытая "липкая" копия счётчика, поэтому исключаем её
+    private final Item quantityCounter = Item.byClassInContainer(
+            "HazePriceButton__counter", "stickyOfferPlaced", "HazePriceButton__counterText");
+    private final Item incrementButton = Item.buttonByTestIdInContainer(
+            "HazePriceButton__counter", "stickyOfferPlaced", "incrementBtn");
+    // ссылка с названием магазина; текст у каждого продавца свой, поэтому ищем по классу
+    private final Link sellerNameLink = Link.byClass("HazeProductDescription_HazeProductDescription__storeNameLink");
 
     /**
      * Ждет загрузки основных элементов карточки товара.
@@ -81,6 +90,37 @@ public class ProductPage extends BasePage {
     public CartPage openCart() {
         cartLink.shouldBe(visible, Duration.ofSeconds(20)).click();
         return new CartPage().waitUntilOpened();
+    }
+
+    /**
+     * Возвращает число на счётчике количества товара.
+     * Счётчик появляется на месте кнопки после нажатия "В корзину".
+     */
+    public String getCurrentQuantity() {
+        return quantityCounter.getTextContent();
+    }
+
+    /**
+     * Нажимает кнопку "+" на счётчике количества товара.
+     */
+    public void incrementQuantity() {
+        // важно: при количестве 1 левая кнопка счётчика - это иконка удаления
+        // (убирает товар), а не минус, поэтому здесь нажимаем только "+"
+        String oldValue = getCurrentQuantity();
+        incrementButton.click();
+        // динамическое ожидание: счётчик обновляется скриптом страницы
+        // чуть позже клика, поэтому ждём, пока число реально изменится
+        quantityCounter.waitUntilTextChanges(oldValue);
+    }
+
+    /**
+     * Открывает страницу магазина продавца по ссылке с названием магазина.
+     */
+    public SellerPage openSellerPage() {
+        // обычный клик по этой ссылке не срабатывает, поэтому кликаем через JS;
+        // JS-клик открывает магазин в той же вкладке, переключение не нужно
+        sellerNameLink.clickViaJs();
+        return new SellerPage();
     }
 
     /**
