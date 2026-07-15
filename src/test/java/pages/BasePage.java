@@ -39,6 +39,13 @@ public class BasePage {
     }
 
     /**
+     * Обновляет текущую страницу.
+     */
+    public void refresh() {
+        Selenide.refresh();
+    }
+
+    /**
      * Активирует текущую страницу после переходов, где AliExpress оставляет окно без фокуса.
      */
     protected void activatePage() {

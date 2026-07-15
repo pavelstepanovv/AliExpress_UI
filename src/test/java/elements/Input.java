@@ -52,4 +52,14 @@ public class Input extends BaseElement {
     public void clear() {
         super.clear();
     }
+
+    /**
+     * Возвращает текущее значение поля ввода.
+     * У тега input введённый текст лежит в атрибуте value, а не в тексте тега.
+     *
+     * Возвращает: текст, который сейчас введён в поле
+     */
+    public String getValue() {
+        return element.getValue();
+    }
 }
