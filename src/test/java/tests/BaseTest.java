@@ -13,7 +13,8 @@ public abstract class BaseTest {
 
     protected static final String HEADPHONES_QUERY = "наушники";
     protected static final String HEADPHONES_PARTIAL_QUERY = "науш";
-    protected static final String USB_C_CABLE_QUERY = "кабель USB-C";
+    protected static final String CART_PRODUCT_QUERY = "брелок";
+    protected static final String CART_PRODUCT_EXPECTED_WORD = "брелок";
     protected static final int CART_PRODUCT_QUANTITY = 3;
     protected static final int MAX_PRICE = 200;
 
