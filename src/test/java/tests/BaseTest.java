@@ -1,7 +1,7 @@
 package tests;
 
 import com.codeborne.selenide.Configuration;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.chrome.ChromeOptions;
 
@@ -9,26 +9,21 @@ import org.openqa.selenium.chrome.ChromeOptions;
  * Базовый класс для UI-тестов AliExpress.
  * Автор: Шакуров 4382.
  */
+@ExtendWith(BrowserSessionExtension.class)
 public abstract class BaseTest {
 
     protected static final String HEADPHONES_QUERY = "наушники";
     protected static final String HEADPHONES_PARTIAL_QUERY = "науш";
-    protected static final String USB_C_CABLE_QUERY = "кабель USB-C";
+    protected static final String CART_PRODUCT_QUERY = "брелок";
+    protected static final String CART_PRODUCT_EXPECTED_WORD = "брелок";
+    protected static final String DELIVERY_CITY = "Санкт-Петербург";
     protected static final int CART_PRODUCT_QUANTITY = 3;
     protected static final int MAX_PRICE = 200;
 
     /**
-     * Подготавливает браузер перед запуском теста.
-     */
-    @BeforeEach
-    public void setUp() {
-        configureSelenide(createChromeOptions());
-    }
-
-    /**
      * Создает настройки Chrome для стабильного запуска UI-тестов.
      */
-    private ChromeOptions createChromeOptions() {
+    private static ChromeOptions createChromeOptions() {
         ChromeOptions options = new ChromeOptions();
         addChromeArguments(options);
         options.setPageLoadStrategy(PageLoadStrategy.EAGER);
@@ -38,7 +33,7 @@ public abstract class BaseTest {
     /**
      * Добавляет аргументы запуска Chrome.
      */
-    private void addChromeArguments(ChromeOptions options) {
+    private static void addChromeArguments(ChromeOptions options) {
         options.addArguments("--disable-blink-features=AutomationControlled");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
@@ -49,7 +44,8 @@ public abstract class BaseTest {
     /**
      * Применяет общие настройки Selenide.
      */
-    private void configureSelenide(ChromeOptions options) {
+    static void configureSelenide() {
+        ChromeOptions options = createChromeOptions();
         Configuration.browser = "chrome";
         Configuration.headless = false;
         Configuration.timeout = 60000;
