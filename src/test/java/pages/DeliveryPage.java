@@ -1,62 +1,63 @@
 package pages;
 
-import com.codeborne.selenide.ElementsCollection;
 import com.codeborne.selenide.SelenideElement;
+import org.openqa.selenium.Keys;
 import java.time.Duration;
 
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$x;
 import static com.codeborne.selenide.Selenide.$$x;
-import static com.codeborne.selenide.Selenide.executeJavaScript;
+import static com.codeborne.selenide.Selenide.sleep;
 
 public class DeliveryPage extends BasePage {
 
     public DeliveryPage setCity(String city) {
-        ElementsCollection allInputs = $$x("//input");
-        SelenideElement cityInput = null;
+        $x("//*[not(self::script or self::style)][contains(text(), 'Адрес доставки') or contains(text(), 'Выберите на карте')]")
+                .shouldBe(visible, Duration.ofSeconds(15));
 
-        for (SelenideElement input : allInputs) {
-            if (input.isDisplayed()) {
-                String placeholder = input.getAttribute("placeholder");
-                if (placeholder != null && (placeholder.toLowerCase().contains("адрес") ||
-                        placeholder.toLowerCase().contains("индекс") ||
-                        placeholder.toLowerCase().contains("город"))) {
-                    cityInput = input;
-                    break;
-                }
-            }
+        SelenideElement addressContainer = $x("//span[contains(@class, 'AddressMap_Textarea')]");
+        addressContainer.shouldBe(visible, Duration.ofSeconds(15)).click();
+        sleep(1000);
+
+        SelenideElement actualInput = $x("//span[contains(@class, 'AddressMap_Textarea')]//textarea | //span[contains(@class, 'AddressMap_Textarea')]//input");
+        actualInput.shouldBe(visible, Duration.ofSeconds(5)).click();
+
+        SelenideElement clearCross = $x("//span[contains(@class, 'AddressMap_Textarea')]/..//*[local-name()='svg'] | //span[contains(@class, 'AddressMap_Textarea')]//*[contains(@class, 'close') or contains(@class, 'clear')]");
+        if (clearCross.exists() && clearCross.isDisplayed()) {
+            clearCross.click();
+        } else {
+            actualInput.sendKeys(Keys.chord(Keys.COMMAND, "a"), Keys.BACK_SPACE);
+            actualInput.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.BACK_SPACE);
+            actualInput.clear();
         }
+        sleep(500);
 
-        if (cityInput == null) {
-            cityInput = $x("//input[contains(@class, 'address') or contains(@class, 'city')]");
-        }
+        actualInput.setValue(city);
+        sleep(2000);
 
-        cityInput.shouldBe(visible, Duration.ofSeconds(15));
-        executeJavaScript("arguments[0].scrollIntoView(true);", cityInput);
-        executeJavaScript("arguments[0].click();", cityInput);
-        executeJavaScript("arguments[0].value = '';", cityInput);
-        executeJavaScript("arguments[0].value = arguments[1];", cityInput, city);
+        actualInput.sendKeys(Keys.ARROW_DOWN);
+        sleep(500);
+        actualInput.sendKeys(Keys.ENTER);
+        sleep(1000);
 
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        SelenideElement suggestion = $$x("//*[not(self::input or self::textarea or self::script or self::style)][contains(text(), '" + city + "')]")
+                .filterBy(visible)
+                .last();
+
+        if (suggestion.exists()) {
+            suggestion.click();
+            sleep(1000);
         }
 
         return this;
     }
 
     public MainPage saveChanges() {
-        SelenideElement saveButton = $x("//button[contains(text(), 'Сохранить')]");
-        saveButton.shouldBe(visible, Duration.ofSeconds(15));
-        executeJavaScript("arguments[0].click();", saveButton);
+        // Железобетонный локатор кнопки от разработчиков
+        SelenideElement saveButton = $x("//button[@data-testid='addressMapSaveButton']");
+        saveButton.shouldBe(visible, Duration.ofSeconds(10)).click();
 
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
+        sleep(3000); // Даем время шапке обновиться
         return new MainPage();
     }
 }

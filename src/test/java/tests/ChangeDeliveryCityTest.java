@@ -10,14 +10,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class ChangeDeliveryCityTest extends BaseTest {
 
-    private static final String DELIVERY_CITY = "Санкт-Петербург";
+    private static final String DELIVERY_CITY = "Москва";
 
     @Test
     public void testChangeDeliveryCity() {
         MainPage mainPage = new MainPage().open();
-
-        System.out.println("Если появилась капча, пройдите её вручную. Ожидание...");
-        sleep(30000);
 
         DeliveryPage deliveryPage = mainPage.openDeliverySettings();
 

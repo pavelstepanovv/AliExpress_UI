@@ -18,19 +18,8 @@ public class RemoveProductFromCartTest extends BaseTest {
 
         productPage.addToCart();
 
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
         CartPage cartPage = productPage.openCart();
 
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
         cartPage.removeProduct();
 

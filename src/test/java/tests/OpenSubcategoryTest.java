@@ -15,11 +15,6 @@ public class OpenSubcategoryTest extends BaseTest {
     public void testOpenSubcategory() {
         MainPage mainPage = new MainPage().open();
 
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
         CategoryPage categoryPage = mainPage.openSubcategory(MAIN_CATEGORY, SUB_CATEGORY);
 

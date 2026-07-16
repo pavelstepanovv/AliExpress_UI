@@ -16,19 +16,7 @@ public class ViewProductReviewsTest extends BaseTest {
         SearchResultPage results = mainPage.search(HEADPHONES_QUERY);
         ProductPage productPage = results.openFirstProduct();
 
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
         ReviewsPage reviewsPage = productPage.openReviews();
-
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
         assertThat(reviewsPage.isRatingDisplayed())
                 .as("Должен отображаться общий рейтинг товара")
@@ -42,12 +30,6 @@ public class ViewProductReviewsTest extends BaseTest {
             assertThat(reviewsPage.getReviewStars())
                     .as("У текстовых отзывов должны быть звёзды рейтинга")
                     .allMatch(stars -> stars >= 1 && stars <= 5);
-        }
-
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
     }
 }

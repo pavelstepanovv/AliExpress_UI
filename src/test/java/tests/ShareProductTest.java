@@ -16,19 +16,7 @@ public class ShareProductTest extends BaseTest {
         SearchResultPage results = mainPage.search(HEADPHONES_QUERY);
         ProductPage productPage = results.openFirstProduct();
 
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
         SharePage sharePage = productPage.openShareDialog();
-
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
         boolean shareDialogDisplayed = sharePage.isShareDialogDisplayed();
         System.out.println("Шторка поделиться отображается: " + shareDialogDisplayed);
@@ -45,11 +33,5 @@ public class ShareProductTest extends BaseTest {
         assertThat(shareDialogDisplayed)
                 .as("Должна открыться шторка 'Поделиться'")
                 .isTrue();
-
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 }
