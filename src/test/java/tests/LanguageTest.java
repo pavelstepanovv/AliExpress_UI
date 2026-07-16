@@ -1,10 +1,11 @@
 package tests;
 
-import com.codeborne.selenide.Selenide;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.WebDriverException;
 import pages.MainPage;
 
+import static com.codeborne.selenide.WebDriverRunner.hasWebDriverStarted;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -34,15 +35,18 @@ public class LanguageTest extends BaseTest {
         assertThat(mainPage.getSearchButtonText())
                 .as("После смены языка кнопка поиска должна называться '%s'", EXPECTED_BUTTON_TEXT)
                 .isEqualToIgnoringCase(EXPECTED_BUTTON_TEXT);
+
     }
 
-    /**
-     * Удаляет cookie после теста.
-     * Браузер не закрывается между тестами, а выбранный язык хранится в cookie:
-     * без очистки остальные тесты не найдут элементы с русским текстом.
-     */
+    /** Возвращает русский язык, сохраняя cookie капчи и общую браузерную сессию. */
     @AfterEach
-    public void resetLanguageCookie() {
-        Selenide.clearBrowserCookies();
+    public void resetLanguage() {
+        if (hasWebDriverStarted()) {
+            try {
+                new MainPage().open().closeLocationPopupIfPresent().switchLanguageToRussian();
+            } catch (AssertionError | WebDriverException ignored) {
+                // Не маскируем результат основного теста ошибкой очистки состояния.
+            }
+        }
     }
 }

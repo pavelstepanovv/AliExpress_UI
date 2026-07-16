@@ -42,5 +42,6 @@ public class SearchClearTest extends BaseTest {
         assertThat(fieldValue)
                 .as("Старого запроса '%s' в поле быть не должно", FIRST_QUERY)
                 .doesNotContain(FIRST_QUERY);
+
     }
 }

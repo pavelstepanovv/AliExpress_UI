@@ -15,6 +15,7 @@ public class Item extends BaseElement {
 
     // СТАТИЧЕСКИЕ ПОЛЯ (локаторы)
     private static final String ITEM_BY_CLASS_XPATH = "//*[contains(@class, '%s')]";
+    private static final String ITEM_BY_TEST_ID_XPATH = "//*[@data-testid='%s']";
     private static final String ITEM_BY_CLASS_AND_TEXT_XPATH = "//*[contains(@class, '%s')][normalize-space()='%s']";
     private static final String BUTTON_BY_TEST_ID_XPATH = "//button[@data-testid='%s'][not(contains(@class, '%s'))]";
     private static final String BUTTON_BY_TEST_ID_IN_CONTAINER_XPATH =
@@ -40,6 +41,11 @@ public class Item extends BaseElement {
      */
     public static Item byClass(String className) {
         return new Item(ITEM_BY_CLASS_XPATH, className);
+    }
+
+    /** Создаёт простой элемент по стабильному атрибуту data-testid. */
+    public static Item byTestId(String testId) {
+        return new Item(ITEM_BY_TEST_ID_XPATH, testId);
     }
 
     /**
@@ -97,15 +103,9 @@ public class Item extends BaseElement {
         element.click();
     }
 
-    /**
-     * Проверяет, появился ли элемент на странице за указанное время.
-     * Это динамическое ожидание: проверка идёт каждые 0,5 секунды.
-     *
-     * Параметры: timeout максимальное время ожидания
-     * Возвращает: true, если элемент виден
-     */
-    public boolean isDisplayed(Duration timeout) {
-        return element.is(Condition.visible, timeout);
+    /** Ждёт, пока элемент станет видимым. */
+    public void waitUntilVisible(Duration timeout) {
+        element.shouldBe(Condition.visible, timeout);
     }
 
     /**

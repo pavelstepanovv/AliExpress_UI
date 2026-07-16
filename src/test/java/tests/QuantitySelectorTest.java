@@ -1,7 +1,5 @@
 package tests;
 
-import com.codeborne.selenide.Selenide;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import pages.MainPage;
 import pages.ProductPage;
@@ -46,15 +44,5 @@ public class QuantitySelectorTest extends BaseTest {
         assertThat(productPage.getCurrentQuantity())
                 .as("После нажатия '+' счётчик должен показывать '2'")
                 .isEqualTo("2");
-    }
-
-    /**
-     * Удаляет cookie после теста, чтобы очистить корзину:
-     * браузер не закрывается между тестами, и добавленный товар
-     * мог бы помешать другим тестам.
-     */
-    @AfterEach
-    public void resetCart() {
-        Selenide.clearBrowserCookies();
     }
 }

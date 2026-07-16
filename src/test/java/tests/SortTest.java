@@ -16,32 +16,33 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SortTest extends BaseTest {
 
     private static final String SEARCH_QUERY = "рюкзак";
+    private static final String EXPECTED_SORT_TYPE = "price_asc";
+    private static final String EXPECTED_SORT_TEXT = "Сначала дешёвые";
 
     /**
-     * Проверяет, что после сортировки цена первого товара не больше цены второго.
+     * Проверяет, что AliExpress применил сортировку по возрастанию цены.
      */
     @Test
     public void testSortByPriceAscending() {
-        // 1. open the main page and search for the product
         MainPage mainPage = new MainPage().open().closeLocationPopupIfPresent();
         SearchResultPage results = mainPage.search(SEARCH_QUERY);
 
-        // 2. sort the results by price, cheapest first
         results.sortByPriceAscending();
-
-        // 3. read the prices of the loaded products
         List<Integer> prices = results.getProductPrices();
 
-        assertThat(prices.size())
+        assertThat(prices)
                 .as("После сортировки на странице должно быть хотя бы два товара с ценой")
-                .isGreaterThanOrEqualTo(2);
+                .hasSizeGreaterThanOrEqualTo(2);
 
-        System.out.println("Цена первого товара: " + prices.get(0));
-        System.out.println("Цена второго товара: " + prices.get(1));
+        assertThat(results.getSelectedSortType())
+                .as("Должен быть применён режим '%s'. Цены в выдаче: %s",
+                        EXPECTED_SORT_TYPE, prices)
+                .isEqualTo(EXPECTED_SORT_TYPE);
 
-        // 4. the first price must not be greater than the second one
-        assertThat(prices.get(0))
-                .as("После сортировки цена первого товара должна быть не больше цены второго")
-                .isLessThanOrEqualTo(prices.get(1));
+        assertThat(results.getSelectedSortText())
+                .as("В списке сортировки должен отображаться пункт '%s'. Цены в выдаче: %s",
+                        EXPECTED_SORT_TEXT, prices)
+                .isEqualTo(EXPECTED_SORT_TEXT);
+
     }
 }

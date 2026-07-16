@@ -2,13 +2,19 @@ package pages;
 
 import com.codeborne.selenide.ElementsCollection;
 import com.codeborne.selenide.SelenideElement;
+import elements.Button;
+import elements.Item;
+import elements.Link;
 
 import java.time.Duration;
+import java.util.Set;
 
 import static com.codeborne.selenide.Condition.visible;
+import static com.codeborne.selenide.Condition.exist;
 import static com.codeborne.selenide.Selenide.$x;
 import static com.codeborne.selenide.Selenide.$$x;
 import static com.codeborne.selenide.Selenide.executeJavaScript;
+import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
 
 public class ProductPage extends BasePage {
 
@@ -17,11 +23,20 @@ public class ProductPage extends BasePage {
     private final ElementsCollection addToCartButtons = $$x("//button[@data-testid='toCartBtn' or @data-button-add-to-cart='true']");
     private final ElementsCollection understoodButtons = $$x("//button[normalize-space()='Понятно' or .//*[normalize-space()='Понятно']]");
     private final SelenideElement cartLink = $x("//a[.//span[normalize-space()='Корзина'] or contains(normalize-space(), 'Корзина')]");
+    private final SelenideElement reviewsAnchor = $x("//*[@id='reviews_anchor']");
+    private final SelenideElement allReviewsButton = $x("//button[@aria-label='allReviewsButton']");
+    private final Button shareButton = Button.byText("Поделиться");
+    // на странице есть вторая скрытая "липкая" копия счётчика, поэтому исключаем её
+    private final Item quantityCounter = Item.byClassInContainer(
+            "HazePriceButton__counter", "stickyOfferPlaced", "HazePriceButton__counterText");
+    private final Item incrementButton = Item.buttonByTestIdInContainer(
+            "HazePriceButton__counter", "stickyOfferPlaced", "incrementBtn");
+    // ссылка с названием магазина; текст у каждого продавца свой, поэтому ищем по классу
+    private final Link sellerNameLink = Link.byClass("HazeProductDescription_HazeProductDescription__storeNameLink");
 
     public ProductPage waitUntilOpened() {
         titleElement.shouldBe(visible, Duration.ofSeconds(30));
         getVisiblePriceElement().shouldBe(visible, Duration.ofSeconds(30));
-        getVisibleAddToCartButton().shouldBe(visible, Duration.ofSeconds(30));
         return this;
     }
 
@@ -46,59 +61,71 @@ public class ProductPage extends BasePage {
     }
 
     public void addToCart() {
+        dismissBlockingOverlays();
         closeVisibleHints();
         getVisibleAddToCartButton().scrollIntoView(true).click();
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        quantityCounter.waitUntilVisible(Duration.ofSeconds(20));
     }
 
     public CartPage openCart() {
+        dismissBlockingOverlays();
         cartLink.shouldBe(visible, Duration.ofSeconds(20)).click();
         return new CartPage().waitUntilOpened();
     }
 
-    public ReviewsPage openReviews() {
-        SelenideElement reviewsTab = $x("//*[contains(@class, 'anchor') or contains(@class, 'tab') or self::a]//*[contains(text(), 'Отзыв') or contains(text(), 'review')]");
-
-        if (!reviewsTab.exists()) {
-            reviewsTab = $x("//a[contains(text(), 'Отзыв')]");
-        }
-        if (!reviewsTab.exists()) {
-            reviewsTab = $x("//*[contains(text(), 'Отзыв')]");
-        }
-
-        if (reviewsTab.exists()) {
-            reviewsTab.shouldBe(visible, Duration.ofSeconds(15)).scrollIntoView("{block: 'center'}");
-            executeJavaScript("arguments[0].click();", reviewsTab);
-        }
-
-        return new ReviewsPage();
+    /**
+     * Возвращает число на счётчике количества товара.
+     * Счётчик появляется на месте кнопки после нажатия "В корзину".
+     */
+    public String getCurrentQuantity() {
+        return quantityCounter.getTextContent();
     }
 
-    public SharePage openShareDialog() {
-        SelenideElement shareButton = $x("//button[contains(text(), 'Поделиться') or contains(@data-testid, 'share')]");
-        if (!shareButton.exists()) {
-            shareButton = $x("//*[contains(text(), 'Поделиться')]");
-        }
-        if (!shareButton.exists()) {
-            shareButton = $x("//*[contains(@class, 'share')]//button");
-        }
-        if (!shareButton.exists()) {
-            shareButton = $x("//button[contains(@aria-label, 'share') or contains(@aria-label, 'Share')]");
-        }
-        shareButton.shouldBe(visible, Duration.ofSeconds(10)).scrollIntoView("{block: 'center'}");
-        executeJavaScript("arguments[0].click();", shareButton);
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return new SharePage();
+    /**
+     * Нажимает кнопку "+" на счётчике количества товара.
+     */
+    public void incrementQuantity() {
+        dismissBlockingOverlays();
+        // важно: при количестве 1 левая кнопка счётчика - это иконка удаления
+        // (убирает товар), а не минус, поэтому здесь нажимаем только "+"
+        String oldValue = getCurrentQuantity();
+        incrementButton.click();
+        // динамическое ожидание: счётчик обновляется скриптом страницы
+        // чуть позже клика, поэтому ждём, пока число реально изменится
+        quantityCounter.waitUntilTextChanges(oldValue);
     }
 
+    /**
+     * Открывает страницу магазина продавца по ссылке с названием магазина.
+     */
+    public SellerPage openSellerPage() {
+        dismissBlockingOverlays();
+        // обычный клик по этой ссылке не срабатывает, поэтому кликаем через JS;
+        // JS-клик открывает магазин в той же вкладке, переключение не нужно
+        sellerNameLink.clickViaJs();
+        return new SellerPage();
+    }
+
+    /** Прокручивает страницу к отзывам и открывает полный список. */
+    public ReviewsPage openAllReviews() {
+        dismissBlockingOverlays();
+        reviewsAnchor.shouldBe(exist, Duration.ofSeconds(30)).scrollIntoView(true);
+        Set<String> oldWindowHandles = getWebDriver().getWindowHandles();
+        allReviewsButton.shouldBe(visible, Duration.ofSeconds(30)).click();
+        switchToNewWindowIfOpened(oldWindowHandles, "/reviews");
+        return new ReviewsPage().waitUntilOpened();
+    }
+
+    /** Открывает окно с вариантами отправки ссылки на товар. */
+    public SharePopup openSharePopup() {
+        dismissBlockingOverlays();
+        shareButton.clickWhenVisible(Duration.ofSeconds(30));
+        return new SharePopup().waitUntilOpened();
+    }
+
+    /**
+     * Возвращает видимый блок цены товара.
+     */
     private SelenideElement getVisiblePriceElement() {
         return priceElements.findBy(visible);
     }

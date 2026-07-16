@@ -45,6 +45,5 @@ public class SellerLinkTest extends BaseTest {
                 .as("Название магазина не должно быть пустым")
                 .isNotBlank();
 
-        System.out.println("Открыт магазин: " + shopTitle);
     }
 }
