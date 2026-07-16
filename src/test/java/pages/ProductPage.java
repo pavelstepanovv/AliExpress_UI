@@ -16,10 +16,6 @@ import static com.codeborne.selenide.Selenide.$$x;
 import static com.codeborne.selenide.Selenide.executeJavaScript;
 import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
 
-/**
- * Page Object страницы товара AliExpress.
- * Автор: Шакуров 4382.
- */
 public class ProductPage extends BasePage {
 
     private final SelenideElement titleElement = $x("//h1[string-length(normalize-space()) > 0]");
@@ -38,53 +34,32 @@ public class ProductPage extends BasePage {
     // ссылка с названием магазина; текст у каждого продавца свой, поэтому ищем по классу
     private final Link sellerNameLink = Link.byClass("HazeProductDescription_HazeProductDescription__storeNameLink");
 
-    /**
-     * Ждет загрузки основных элементов карточки товара.
-     */
     public ProductPage waitUntilOpened() {
         titleElement.shouldBe(visible, Duration.ofSeconds(30));
         getVisiblePriceElement().shouldBe(visible, Duration.ofSeconds(30));
         return this;
     }
 
-    /**
-     * Проверяет, отображается ли название товара.
-     */
     public boolean isTitleDisplayed() {
         return titleElement.isDisplayed();
     }
 
-    /**
-     * Возвращает название товара.
-     */
     public String getTitleText() {
         return titleElement.getText();
     }
 
-    /**
-     * Проверяет, отображается ли цена товара.
-     */
     public boolean isPriceDisplayed() {
         return getVisiblePriceElement().isDisplayed();
     }
 
-    /**
-     * Возвращает цену товара.
-     */
     public String getPrice() {
         return getVisiblePriceElement().getText();
     }
 
-    /**
-     * Проверяет наличие кнопки добавления в корзину.
-     */
     public boolean hasAddToCartButton() {
         return getVisibleAddToCartButton().isDisplayed();
     }
 
-    /**
-     * Нажимает кнопку добавления товара в корзину.
-     */
     public void addToCart() {
         dismissBlockingOverlays();
         closeVisibleHints();
@@ -92,9 +67,6 @@ public class ProductPage extends BasePage {
         quantityCounter.waitUntilVisible(Duration.ofSeconds(20));
     }
 
-    /**
-     * Открывает корзину через иконку в шапке сайта.
-     */
     public CartPage openCart() {
         dismissBlockingOverlays();
         cartLink.shouldBe(visible, Duration.ofSeconds(20)).click();
@@ -158,16 +130,10 @@ public class ProductPage extends BasePage {
         return priceElements.findBy(visible);
     }
 
-    /**
-     * Возвращает видимую кнопку добавления товара в корзину.
-     */
     private SelenideElement getVisibleAddToCartButton() {
         return addToCartButtons.findBy(visible);
     }
 
-    /**
-     * Закрывает видимые подсказки и баннеры, которые могут перекрывать кнопку корзины.
-     */
     private void closeVisibleHints() {
         for (int i = 0; i < 2; i++) {
             SelenideElement button = understoodButtons.findBy(visible);

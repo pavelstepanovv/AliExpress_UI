@@ -52,10 +52,4 @@ public abstract class BaseTest {
         Configuration.browserSize = "1920x1080";
         Configuration.browserCapabilities = options;
     }
-
-    /*
-     * Браузер не закрывается после каждого теста осознанно: так снижается риск
-     * повторного появления капчи AliExpress при общем прогоне.
-     * Selenide закрывает WebDriver через shutdown hook после завершения JVM.
-     */
 }

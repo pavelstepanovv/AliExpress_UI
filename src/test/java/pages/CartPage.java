@@ -13,11 +13,8 @@ import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$x;
 import static com.codeborne.selenide.Selenide.$$x;
+import static com.codeborne.selenide.Selenide.executeJavaScript;
 
-/**
- * Page Object корзины AliExpress.
- * Автор: Шакуров 4382.
- */
 public class CartPage extends BasePage {
 
     private static final String URL = "https://aliexpress.ru/cart";
@@ -60,23 +57,14 @@ public class CartPage extends BasePage {
         return this;
     }
 
-    /**
-     * Возвращает название товара в корзине.
-     */
     public String getProductTitle() {
         return productTitle.getText();
     }
 
-    /**
-     * Возвращает текущее количество товара.
-     */
     public int getProductQuantity() {
         return Integer.parseInt(productQuantity.getAttribute("data-product-quantity"));
     }
 
-    /**
-     * Увеличивает количество товара до указанного значения.
-     */
     public CartPage increaseProductQuantityTo(int expectedQuantity) {
         while (getProductQuantity() < expectedQuantity) {
             dismissBlockingOverlays();
@@ -87,25 +75,16 @@ public class CartPage extends BasePage {
         return this;
     }
 
-    /**
-     * Возвращает цену товара за одну штуку.
-     */
     public int getProductUnitPrice() {
         return Integer.parseInt(productPrice.getAttribute("data-product-unformatted-price"));
     }
 
-    /**
-     * Ждет пересчета итогового блока под нужное количество товара.
-     */
     public CartPage waitTotalRecalculatedForQuantity(int expectedQuantity) {
         totalItemsText.shouldHave(text(expectedQuantity + " шт."), Duration.ofSeconds(20));
         totalPriceText.shouldBe(visible, Duration.ofSeconds(20));
         return this;
     }
 
-    /**
-     * Возвращает итоговую стоимость корзины числом.
-     */
     public int getTotalPrice() {
         return Integer.parseInt(totalPriceText.getText().replaceAll("[^0-9]", ""));
     }

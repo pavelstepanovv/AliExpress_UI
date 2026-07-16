@@ -52,9 +52,6 @@ public class MainPage extends BasePage {
     private final ElementsCollection deliveryCityLabels = $$x(
             "//span[contains(@class,'ShipToHeaderItem_GeoTooltip__text__')]");
 
-    /**
-     * Открывает главную страницу AliExpress.
-     */
     public MainPage open() {
         open(URL);
         dismissBlockingOverlays(Duration.ofSeconds(2));
@@ -63,9 +60,6 @@ public class MainPage extends BasePage {
         return this;
     }
 
-    /**
-     * Выполняет поиск товара по ключевому слову.
-     */
     public SearchResultPage search(String query) {
         searchInput.fill(query);
         dismissBlockingOverlays(Duration.ofSeconds(4));
@@ -73,24 +67,15 @@ public class MainPage extends BasePage {
         return new SearchResultPage();
     }
 
-    /**
-     * Очищает строку поиска.
-     */
     public void clearSearch() {
         searchInput.clear();
     }
 
-    /**
-     * Заполняет строку поиска без отправки формы.
-     */
     public void fillSearch(String query) {
         searchInput.fill(query);
         dismissBlockingOverlays(Duration.ofSeconds(2));
     }
 
-    /**
-     * Вводит часть запроса и динамически ждет появления поисковых подсказок.
-     */
     public MainPage fillSearchAndWaitSuggestions(String query) {
         searchInput.fill(query);
         dismissBlockingOverlays(Duration.ofSeconds(2));
@@ -98,16 +83,10 @@ public class MainPage extends BasePage {
         return this;
     }
 
-    /**
-     * Возвращает количество найденных подсказок.
-     */
     public int getSuggestionsCount() {
         return searchSuggestions.size();
     }
 
-    /**
-     * Возвращает тексты поисковых подсказок.
-     */
     public List<String> getSuggestionValues() {
         List<String> suggestions = new ArrayList<>();
         for (int i = 0; i < searchSuggestions.size(); i++) {
