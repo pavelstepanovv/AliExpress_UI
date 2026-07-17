@@ -27,24 +27,39 @@ import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
  */
 public class SearchResultPage extends BasePage {
 
-    private static final String PRODUCT_CARDS_XPATH = "//a[contains(@class, 'universalSnippetLink')]";
-    private static final String PRODUCT_TITLE_XPATH = ".//div[@data-type='PartWrap-Text'][@title]";
-    private static final String PRODUCT_TITLE_FALLBACK_XPATH = ".//div[@data-type='PartWrap-Text'][contains(@style, 'line-clamp: 2')]";
-    private static final String PRODUCT_PRICE_XPATH = ".//div[@data-type='PartWrap-Text'][contains(@style, 'font-size: 21px')]";
-    private static final String MAX_PRICE_INPUT_XPATH = "(//div[contains(@class, 'PriceBlock')]//input)[2]";
+    // СТАТИЧЕСКИЕ ПОЛЯ (константы)
+    private static final int PRODUCT_LOAD_TIMEOUT_SEC = 15;
+    private static final int PRICE_INPUT_TIMEOUT_SEC = 15;
+
+    private static final String PRODUCT_CARDS_XPATH =
+            "//a[contains(@class, 'universalSnippetLink')]";
+    private static final String PRODUCT_TITLE_XPATH =
+            ".//div[@data-type='PartWrap-Text'][@title]";
+    private static final String PRODUCT_TITLE_FALLBACK_XPATH =
+            ".//div[@data-type='PartWrap-Text'][contains(@style, 'line-clamp: 2')]";
+    private static final String PRODUCT_PRICE_XPATH =
+            ".//div[@data-type='PartWrap-Text'][contains(@style, 'font-size: 21px')]";
+    private static final String MAX_PRICE_INPUT_XPATH =
+            "(//div[contains(@class, 'PriceBlock')]//input)[2]";
     private static final String PRICE_ASC_SORT_TYPE = "price_asc";
 
+    // ПОЛЯ ЭКЗЕМПЛЯРА
     private final ElementsCollection productCards = $$x(PRODUCT_CARDS_XPATH);
     private final SelenideElement maxPriceInput = $x(MAX_PRICE_INPUT_XPATH);
     private final Item sortDropdown = Item.byClass("Select__select");
     private final SelenideElement selectedSort = $x(
             "//*[contains(@class, 'Select__select')]//*[@ae_button_type='sort by']");
-    // настоящая радиокнопка внутри опции скрыта, поэтому кликаем по label с текстом
-    private final Item cheapFirstOption = Item.byClassAndText("Select__option", "Сначала дешёвые");
+    private final Item cheapFirstOption = Item.byClassAndText(
+            "Select__option",
+            "Сначала дешёвые");
 
-    /**
-     * Проверяет, что в поисковой выдаче появились товары.
-     */
+    // КОНСТРУКТОРЫ
+    public SearchResultPage() {
+        // пустой конструктор
+    }
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+
     public boolean hasProducts() {
         try {
             waitUntilProductsLoaded();
@@ -54,31 +69,88 @@ public class SearchResultPage extends BasePage {
         }
     }
 
-    /**
-     * Ждет появления товаров в поисковой выдаче.
-     */
     public SearchResultPage waitUntilProductsLoaded() {
-        productCards.shouldHave(sizeGreaterThan(0), Duration.ofSeconds(15));
+        waitForProductCards();
         return this;
     }
 
-    /**
-     * Возвращает количество загруженных карточек товаров.
-     */
     public int getProductsCount() {
         waitUntilProductsLoaded();
+        return getProductCardsCount();
+    }
+
+    public List<String> getProductTitles() {
+        waitUntilProductsLoaded();
+        return extractProductTitles();
+    }
+
+    public String getFirstProductTitle() {
+        waitUntilProductsLoaded();
+        return extractFirstProductTitle();
+    }
+
+    public String getFirstProductPrice() {
+        waitUntilProductsLoaded();
+        return extractFirstProductPrice();
+    }
+
+    public List<Integer> getProductPrices() {
+        waitUntilProductsLoaded();
+        return extractProductPrices();
+    }
+
+    public ProductPage openFirstProduct() {
+        waitUntilProductsLoaded();
+        dismissBlockingOverlays();
+        prepareAndClickFirstProduct();
+        switchToProductWindow("/item/");
+        return new ProductPage().waitUntilOpened();
+    }
+
+    public SearchResultPage filterByMaxPrice(int maxPrice) {
+        dismissBlockingOverlays();
+        enterMaxPrice(maxPrice);
+        applyPriceFilter();
+        return this;
+    }
+
+    public SearchResultPage sortByPriceAscending() {
+        waitUntilProductsLoaded();
+        dismissBlockingOverlays();
+        openSortDropdown();
+        selectCheapFirstOption();
+        waitForSortApplied();
+        waitUntilProductsLoaded();
+        return this;
+    }
+
+    public String getSelectedSortType() {
+        return selectedSort.shouldBe(visible)
+                .getAttribute("ae_object_value");
+    }
+
+    public String getSelectedSortText() {
+        return selectedSort.shouldBe(visible).getText();
+    }
+
+    // ПРИВАТНЫЕ МЕТОДЫ
+
+    private void waitForProductCards() {
+        productCards.shouldHave(
+                sizeGreaterThan(0),
+                Duration.ofSeconds(PRODUCT_LOAD_TIMEOUT_SEC)
+        );
+    }
+
+    private int getProductCardsCount() {
         return productCards.size();
     }
 
-    /**
-     * Возвращает названия загруженных товаров.
-     */
-    public List<String> getProductTitles() {
-        waitUntilProductsLoaded();
+    private List<String> extractProductTitles() {
         List<String> titles = new ArrayList<>();
         for (SelenideElement card : productCards) {
-            String title = card.$x(PRODUCT_TITLE_XPATH).getAttribute("title");
-
+            String title = card.$x(PRODUCT_TITLE_XPATH)
+                    .getAttribute("title");
             if (title != null && !title.isEmpty()) {
                 titles.add(title);
             }
@@ -86,43 +158,31 @@ public class SearchResultPage extends BasePage {
         return titles;
     }
 
-    /**
-     * Возвращает название первого товара.
-     */
-    public String getFirstProductTitle() {
-        waitUntilProductsLoaded();
+    private String extractFirstProductTitle() {
         SelenideElement firstCard = productCards.first();
-
-        String title = firstCard.$x(PRODUCT_TITLE_XPATH).getAttribute("title");
-
+        String title = firstCard.$x(PRODUCT_TITLE_XPATH)
+                .getAttribute("title");
         if (title == null || title.isEmpty()) {
-            title = firstCard.$x(PRODUCT_TITLE_FALLBACK_XPATH).getText();
+            title = firstCard.$x(PRODUCT_TITLE_FALLBACK_XPATH)
+                    .getText();
         }
-
         return title;
     }
 
-    /**
-     * Возвращает цену первого товара.
-     */
-    public String getFirstProductPrice() {
-        waitUntilProductsLoaded();
-        return productCards.first().$x(PRODUCT_PRICE_XPATH).getText();
+    private String extractFirstProductPrice() {
+        return productCards.first()
+                .$x(PRODUCT_PRICE_XPATH)
+                .getText();
     }
 
-    /**
-     * Возвращает распознанные цены загруженных товаров.
-     */
-    public List<Integer> getProductPrices() {
-        waitUntilProductsLoaded();
+    private List<Integer> extractProductPrices() {
         List<Integer> prices = new ArrayList<>();
         for (SelenideElement card : productCards) {
-            String priceText = card.$x(PRODUCT_PRICE_XPATH).getText();
-
+            String priceText = card.$x(PRODUCT_PRICE_XPATH)
+                    .getText();
             if (priceText == null || priceText.isEmpty()) {
                 continue;
             }
-
             try {
                 prices.add(extractFirstPrice(priceText));
             } catch (NumberFormatException e) {
@@ -132,70 +192,55 @@ public class SearchResultPage extends BasePage {
         return prices;
     }
 
-    /**
-     * Открывает первый товар из поисковой выдачи.
-     */
-    public ProductPage openFirstProduct() {
-        waitUntilProductsLoaded();
-        dismissBlockingOverlays();
+    private void prepareAndClickFirstProduct() {
         Set<String> oldWindowHandles = getWebDriver().getWindowHandles();
-        SelenideElement firstProduct = productCards.first().scrollIntoView(true);
-        executeJavaScript("arguments[0].removeAttribute('target');", firstProduct);
+        SelenideElement firstProduct = productCards.first()
+                .scrollIntoView(true);
+        executeJavaScript(
+                "arguments[0].removeAttribute('target');",
+                firstProduct
+        );
         firstProduct.click();
-        switchToNewWindowIfOpened(oldWindowHandles, "/item/");
-        return new ProductPage().waitUntilOpened();
     }
 
-    /**
-     * Вводит верхнюю границу цены в фильтр.
-     */
-    public SearchResultPage filterByMaxPrice(int maxPrice) {
-        dismissBlockingOverlays();
-        maxPriceInput.shouldBe(visible, Duration.ofSeconds(15))
+    private void switchToProductWindow(String urlPart) {
+        Set<String> oldWindowHandles = getWebDriver().getWindowHandles();
+        switchToNewWindowIfOpened(oldWindowHandles, urlPart);
+    }
+
+    private void enterMaxPrice(int maxPrice) {
+        maxPriceInput.shouldBe(visible, Duration.ofSeconds(PRICE_INPUT_TIMEOUT_SEC))
                 .scrollIntoView(true)
-                .setValue(String.valueOf(maxPrice))
-                .pressEnter();
-        return this;
+                .setValue(String.valueOf(maxPrice));
     }
 
-    /**
-     * Открывает список сортировки и выбирает вариант "Сначала дешёвые".
-     */
-    public SearchResultPage sortByPriceAscending() {
-        waitUntilProductsLoaded();
-        dismissBlockingOverlays();
+    private void applyPriceFilter() {
+        maxPriceInput.pressEnter();
+    }
+
+    private void openSortDropdown() {
         sortDropdown.click();
+    }
+
+    private void selectCheapFirstOption() {
         cheapFirstOption.click();
-
-        webdriver().shouldHave(urlContaining("SortType=price_asc"));
-        selectedSort.shouldHave(attribute("ae_object_value", PRICE_ASC_SORT_TYPE));
-        waitUntilProductsLoaded();
-        return this;
     }
 
-    /**
-     * Возвращает техническое значение выбранного режима сортировки.
-     */
-    public String getSelectedSortType() {
-        return selectedSort.shouldBe(visible).getAttribute("ae_object_value");
+    private void waitForSortApplied() {
+        webdriver().shouldHave(
+                urlContaining("SortType=price_asc")
+        );
+        selectedSort.shouldHave(
+                attribute("ae_object_value", PRICE_ASC_SORT_TYPE)
+        );
     }
 
-    /**
-     * Возвращает отображаемое название выбранного режима сортировки.
-     */
-    public String getSelectedSortText() {
-        return selectedSort.shouldBe(visible).getText();
-    }
-
-    /**
-     * Извлекает первое число из строки цены.
-     */
     private int extractFirstPrice(String priceText) {
-        Matcher matcher = Pattern.compile("\\d[\\d\\s]*").matcher(priceText);
+        Matcher matcher = Pattern.compile("\\d[\\d\\s]*")
+                .matcher(priceText);
         if (!matcher.find()) {
             throw new NumberFormatException("Price not found: " + priceText);
         }
         return Integer.parseInt(matcher.group().replaceAll("\\s", ""));
     }
-
 }
