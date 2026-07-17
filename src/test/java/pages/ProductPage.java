@@ -18,25 +18,58 @@ import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
 
 public class ProductPage extends BasePage {
 
-    private final SelenideElement titleElement = $x("//h1[string-length(normalize-space()) > 0]");
-    private final ElementsCollection priceElements = $$x("//*[@data-testid='HazeProductPrice']");
-    private final ElementsCollection addToCartButtons = $$x("//button[@data-testid='toCartBtn' or @data-button-add-to-cart='true']");
-    private final ElementsCollection understoodButtons = $$x("//button[normalize-space()='Понятно' or .//*[normalize-space()='Понятно']]");
-    private final SelenideElement cartLink = $x("//a[.//span[normalize-space()='Корзина'] or contains(normalize-space(), 'Корзина')]");
-    private final SelenideElement reviewsAnchor = $x("//*[@id='reviews_anchor']");
-    private final SelenideElement allReviewsButton = $x("//button[@aria-label='allReviewsButton']");
+    // СТАТИЧЕСКИЕ ПОЛЯ (константы)
+    private static final int LONG_TIMEOUT_SEC = 20;
+    private static final int EXTRA_LONG_TIMEOUT_SEC = 30;
+    private static final int QUANTITY_WAIT_TIMEOUT_SEC = 20;
+    private static final int CART_LINK_TIMEOUT_SEC = 20;
+    private static final int MAX_HINT_CLOSE_ATTEMPTS = 2;
+
+    private static final String TITLE_XPATH =
+            "//h1[string-length(normalize-space()) > 0]";
+    private static final String PRICE_XPATH =
+            "//*[@data-testid='HazeProductPrice']";
+    private static final String ADD_TO_CART_BUTTON_XPATH =
+            "//button[@data-testid='toCartBtn' or @data-button-add-to-cart='true']";
+    private static final String UNDERSTOOD_BUTTON_XPATH =
+            "//button[normalize-space()='Понятно' or .//*[normalize-space()='Понятно']]";
+    private static final String CART_LINK_XPATH =
+            "//a[.//span[normalize-space()='Корзина'] or contains(normalize-space(), 'Корзина')]";
+    private static final String REVIEWS_ANCHOR_XPATH =
+            "//*[@id='reviews_anchor']";
+    private static final String ALL_REVIEWS_BUTTON_XPATH =
+            "//button[@aria-label='allReviewsButton']";
+
+    // ПОЛЯ ЭКЗЕМПЛЯРА
+    private final SelenideElement titleElement = $x(TITLE_XPATH);
+    private final ElementsCollection priceElements = $$x(PRICE_XPATH);
+    private final ElementsCollection addToCartButtons = $$x(ADD_TO_CART_BUTTON_XPATH);
+    private final ElementsCollection understoodButtons = $$x(UNDERSTOOD_BUTTON_XPATH);
+    private final SelenideElement cartLink = $x(CART_LINK_XPATH);
+    private final SelenideElement reviewsAnchor = $x(REVIEWS_ANCHOR_XPATH);
+    private final SelenideElement allReviewsButton = $x(ALL_REVIEWS_BUTTON_XPATH);
     private final Button shareButton = Button.byText("Поделиться");
-    // на странице есть вторая скрытая "липкая" копия счётчика, поэтому исключаем её
     private final Item quantityCounter = Item.byClassInContainer(
-            "HazePriceButton__counter", "stickyOfferPlaced", "HazePriceButton__counterText");
+            "HazePriceButton__counter",
+            "stickyOfferPlaced",
+            "HazePriceButton__counterText");
     private final Item incrementButton = Item.buttonByTestIdInContainer(
-            "HazePriceButton__counter", "stickyOfferPlaced", "incrementBtn");
-    // ссылка с названием магазина; текст у каждого продавца свой, поэтому ищем по классу
-    private final Link sellerNameLink = Link.byClass("HazeProductDescription_HazeProductDescription__storeNameLink");
+            "HazePriceButton__counter",
+            "stickyOfferPlaced",
+            "incrementBtn");
+    private final Link sellerNameLink = Link.byClass(
+            "HazeProductDescription_HazeProductDescription__storeNameLink");
+
+    // КОНСТРУКТОРЫ
+    public ProductPage() {
+        // пустой конструктор
+    }
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
 
     public ProductPage waitUntilOpened() {
-        titleElement.shouldBe(visible, Duration.ofSeconds(30));
-        getVisiblePriceElement().shouldBe(visible, Duration.ofSeconds(30));
+        waitForTitle();
+        waitForPrice();
         return this;
     }
 
@@ -63,69 +96,59 @@ public class ProductPage extends BasePage {
     public void addToCart() {
         dismissBlockingOverlays();
         closeVisibleHints();
-        getVisibleAddToCartButton().scrollIntoView(true).click();
-        quantityCounter.waitUntilVisible(Duration.ofSeconds(20));
+        clickAddToCartButton();
+        waitForQuantityCounter();
     }
 
     public CartPage openCart() {
         dismissBlockingOverlays();
-        cartLink.shouldBe(visible, Duration.ofSeconds(20)).click();
+        clickCartLink();
         return new CartPage().waitUntilOpened();
     }
 
-    /**
-     * Возвращает число на счётчике количества товара.
-     * Счётчик появляется на месте кнопки после нажатия "В корзину".
-     */
     public String getCurrentQuantity() {
         return quantityCounter.getTextContent();
     }
 
-    /**
-     * Нажимает кнопку "+" на счётчике количества товара.
-     */
     public void incrementQuantity() {
         dismissBlockingOverlays();
-        // важно: при количестве 1 левая кнопка счётчика - это иконка удаления
-        // (убирает товар), а не минус, поэтому здесь нажимаем только "+"
         String oldValue = getCurrentQuantity();
-        incrementButton.click();
-        // динамическое ожидание: счётчик обновляется скриптом страницы
-        // чуть позже клика, поэтому ждём, пока число реально изменится
-        quantityCounter.waitUntilTextChanges(oldValue);
+        clickIncrementButton();
+        waitForQuantityChange(oldValue);
     }
 
-    /**
-     * Открывает страницу магазина продавца по ссылке с названием магазина.
-     */
     public SellerPage openSellerPage() {
         dismissBlockingOverlays();
-        // обычный клик по этой ссылке не срабатывает, поэтому кликаем через JS;
-        // JS-клик открывает магазин в той же вкладке, переключение не нужно
-        sellerNameLink.clickViaJs();
+        clickSellerLinkViaJs();
         return new SellerPage();
     }
 
-    /** Прокручивает страницу к отзывам и открывает полный список. */
     public ReviewsPage openAllReviews() {
         dismissBlockingOverlays();
-        reviewsAnchor.shouldBe(exist, Duration.ofSeconds(30)).scrollIntoView(true);
-        Set<String> oldWindowHandles = getWebDriver().getWindowHandles();
-        allReviewsButton.shouldBe(visible, Duration.ofSeconds(30)).click();
-        switchToNewWindowIfOpened(oldWindowHandles, "/reviews");
+        scrollToReviewsAnchor();
+        clickAllReviewsButton();
         return new ReviewsPage().waitUntilOpened();
     }
 
-    /** Открывает окно с вариантами отправки ссылки на товар. */
     public SharePopup openSharePopup() {
         dismissBlockingOverlays();
-        shareButton.clickWhenVisible(Duration.ofSeconds(30));
+        clickShareButton();
         return new SharePopup().waitUntilOpened();
     }
 
-    /**
-     * Возвращает видимый блок цены товара.
-     */
+    // ПРИВАТНЫЕ МЕТОДЫ
+
+    private void waitForTitle() {
+        titleElement.shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC));
+    }
+
+    private void waitForPrice() {
+        getVisiblePriceElement().shouldBe(
+                visible,
+                Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC)
+        );
+    }
+
     private SelenideElement getVisiblePriceElement() {
         return priceElements.findBy(visible);
     }
@@ -134,8 +157,49 @@ public class ProductPage extends BasePage {
         return addToCartButtons.findBy(visible);
     }
 
+    private void clickAddToCartButton() {
+        getVisibleAddToCartButton().scrollIntoView(true).click();
+    }
+
+    private void waitForQuantityCounter() {
+        quantityCounter.waitUntilVisible(Duration.ofSeconds(QUANTITY_WAIT_TIMEOUT_SEC));
+    }
+
+    private void clickCartLink() {
+        cartLink.shouldBe(visible, Duration.ofSeconds(CART_LINK_TIMEOUT_SEC))
+                .click();
+    }
+
+    private void clickIncrementButton() {
+        incrementButton.click();
+    }
+
+    private void waitForQuantityChange(String oldValue) {
+        quantityCounter.waitUntilTextChanges(oldValue);
+    }
+
+    private void clickSellerLinkViaJs() {
+        sellerNameLink.clickViaJs();
+    }
+
+    private void scrollToReviewsAnchor() {
+        reviewsAnchor.shouldBe(exist, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC))
+                .scrollIntoView(true);
+    }
+
+    private void clickAllReviewsButton() {
+        Set<String> oldWindowHandles = getWebDriver().getWindowHandles();
+        allReviewsButton.shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC))
+                .click();
+        switchToNewWindowIfOpened(oldWindowHandles, "/reviews");
+    }
+
+    private void clickShareButton() {
+        shareButton.clickWhenVisible(Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC));
+    }
+
     private void closeVisibleHints() {
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < MAX_HINT_CLOSE_ATTEMPTS; i++) {
             SelenideElement button = understoodButtons.findBy(visible);
             if (!button.exists()) {
                 return;
