@@ -23,15 +23,31 @@ import static com.codeborne.selenide.Selenide.actions;
  */
 public class MainPage extends BasePage {
 
-    private static final String URL = "https://aliexpress.ru";
-    private static final String SEARCH_SUGGESTIONS_XPATH = "//div[@ae_button_type='auto_suggestion' and @ae_object_type='keyword']";
+    // СТАТИЧЕСКИЕ ПОЛЯ (константы)
+    private static final int SHORT_TIMEOUT_SEC = 2;
+    private static final int MEDIUM_TIMEOUT_SEC = 4;
+    private static final int LONG_TIMEOUT_SEC = 10;
+    private static final int EXTRA_LONG_TIMEOUT_SEC = 15;
+    private static final int VERY_LONG_TIMEOUT_SEC = 30;
+    private static final int WAIT_EDITABLE_TIMEOUT_MIN = 3;
+    private static final int LANGUAGE_SWITCH_ATTEMPTS = 6;
+    private static final int LANGUAGE_PANEL_CHECK_SEC = 3;
 
+    private static final String URL = "https://aliexpress.ru";
+    private static final String SEARCH_SUGGESTIONS_XPATH =
+            "//div[@ae_button_type='auto_suggestion' and @ae_object_type='keyword']";
+    private static final String LANGUAGE_FLAG_XPATH_TEMPLATE =
+            "//div[contains(@class,'ShipToHeaderItem_SnowTooltip__shown')]" +
+                    "//li[contains(@class,'ShipToHeaderItem_List__element')][.//img[@alt='%s']]";
+
+    // ПОЛЯ ЭКЗЕМПЛЯРА
     private final Input searchInput = Input.byName("SearchText");
     private final Button searchButton = Button.byText("Найти");
     private final ElementsCollection searchSuggestions = $$x(SEARCH_SUGGESTIONS_XPATH);
-    // та же кнопка поиска, но найденная по классу: её текст меняется после смены языка
-    private final Button searchSubmitButton = Button.byClass("RedSearchBar_RedSearchBar__submit");
-    private final Button clearSearchButton = Button.byClass("RedSearchBar_RedSearchBar__reset");
+    private final Button searchSubmitButton = Button.byClass(
+            "RedSearchBar_RedSearchBar__submit");
+    private final Button clearSearchButton = Button.byClass(
+            "RedSearchBar_RedSearchBar__reset");
     private final SelenideElement catalogButton = $x(
             "//button[.//span[normalize-space()='Каталог']]");
     private final SelenideElement catalogPopup = $x(
@@ -52,18 +68,22 @@ public class MainPage extends BasePage {
     private final ElementsCollection deliveryCityLabels = $$x(
             "//span[contains(@class,'ShipToHeaderItem_GeoTooltip__text__')]");
 
+    // КОНСТРУКТОРЫ
+    public MainPage() {
+        // пустой конструктор
+    }
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+
     public MainPage open() {
-        open(URL);
-        dismissBlockingOverlays(Duration.ofSeconds(2));
-        searchInput.waitUntilEditable(Duration.ofMinutes(3));
-        dismissBlockingOverlays(Duration.ofSeconds(2));
+        openPage();
+        waitForPageReady();
         return this;
     }
 
     public SearchResultPage search(String query) {
-        searchInput.fill(query);
-        dismissBlockingOverlays(Duration.ofSeconds(4));
-        searchButton.click();
+        enterSearchQuery(query);
+        submitSearch();
         return new SearchResultPage();
     }
 
@@ -72,14 +92,12 @@ public class MainPage extends BasePage {
     }
 
     public void fillSearch(String query) {
-        searchInput.fill(query);
-        dismissBlockingOverlays(Duration.ofSeconds(2));
+        enterSearchQuery(query);
     }
 
     public MainPage fillSearchAndWaitSuggestions(String query) {
-        searchInput.fill(query);
-        dismissBlockingOverlays(Duration.ofSeconds(2));
-        searchSuggestions.shouldHave(sizeGreaterThan(0), Duration.ofSeconds(10));
+        enterSearchQuery(query);
+        waitForSuggestions();
         return this;
     }
 
@@ -90,7 +108,8 @@ public class MainPage extends BasePage {
     public List<String> getSuggestionValues() {
         List<String> suggestions = new ArrayList<>();
         for (int i = 0; i < searchSuggestions.size(); i++) {
-            String suggestion = searchSuggestions.get(i).getAttribute("ae_object_value");
+            String suggestion = searchSuggestions.get(i)
+                    .getAttribute("ae_object_value");
             if (suggestion == null) {
                 suggestion = searchSuggestions.get(i).getText();
             }
@@ -99,42 +118,24 @@ public class MainPage extends BasePage {
         return suggestions;
     }
 
-    /**
-     * Закрывает попап выбора региона, если он появился.
-     * Этот попап иногда показывается при первом открытии сайта
-     * и перекрывает другие элементы страницы.
-     */
     public MainPage closeLocationPopupIfPresent() {
-        dismissBlockingOverlays(Duration.ofSeconds(3));
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
         return this;
     }
 
-    /**
-     * Нажимает кнопку очистки поля поиска (крестик).
-     */
     public void clickClearSearch() {
-        dismissBlockingOverlays(Duration.ofSeconds(2));
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
         clearSearchButton.click();
     }
 
-    /**
-     * Возвращает текст, который сейчас введён в поле поиска.
-     */
     public String getSearchFieldValue() {
         return searchInput.getValue();
     }
 
-    /**
-     * Переключает язык интерфейса на английский.
-     * Открывает переключатель языка в шапке и выбирает "English".
-     */
     public void switchLanguageToEnglish() {
         selectLanguageByFlag("US");
     }
 
-    /**
-     * Возвращает русский язык после проверки, не удаляя cookie текущей сессии.
-     */
     public void switchLanguageToRussian() {
         SelenideElement languageSwitcher = getVisibleLanguageSwitcher();
         if ("RU".equalsIgnoreCase(languageSwitcher.getText().trim())) {
@@ -143,85 +144,133 @@ public class MainPage extends BasePage {
         selectLanguageByFlag("RU");
     }
 
-    private void openLanguagePanel() {
-        dismissBlockingOverlays(Duration.ofSeconds(2));
-        for (int attempt = 0; attempt < 6; attempt++) {
-            SelenideElement languageSwitcher = getVisibleLanguageSwitcher();
-
-            actions().moveToElement(languageSwitcher).click().perform();
-            if (languagePanel.is(visible, Duration.ofSeconds(3))) {
-                return;
-            }
-        }
-
-        languagePanel.shouldBe(visible, Duration.ofSeconds(15));
-    }
-
-    private void selectLanguageByFlag(String flagCode) {
-        openLanguagePanel();
-        $x("//div[contains(@class,'ShipToHeaderItem_SnowTooltip__shown')]" +
-                "//li[contains(@class,'ShipToHeaderItem_List__element')]" +
-                "[.//img[@alt='" + flagCode + "']]")
-                .shouldBe(visible, Duration.ofSeconds(15))
-                .click();
-        languagePanel.should(disappear, Duration.ofSeconds(15));
-    }
-
-    private SelenideElement getVisibleLanguageSwitcher() {
-        return languageSwitchers.filterBy(visible).first()
-                .shouldBe(visible, Duration.ofSeconds(15));
-    }
-
-    /**
-     * Возвращает текст кнопки поиска.
-     * После смены языка текст меняется с "Найти" на "Find".
-     */
     public String getSearchButtonText() {
         return searchSubmitButton.getText();
     }
 
-    /** Открывает выпадающее меню каталога. */
     public MainPage openCatalog() {
-        dismissBlockingOverlays(Duration.ofSeconds(2));
-        catalogButton.shouldBe(visible, Duration.ofSeconds(15)).click();
-        catalogPopup.shouldBe(visible, Duration.ofSeconds(15));
+        clickCatalogButton();
+        waitForCatalogPopup();
         return this;
     }
 
-    /** Выбирает раздел «Электроника» и ждёт появления его подкатегорий. */
     public MainPage selectElectronicsCategory() {
-        electronicsCategory.shouldBe(visible, Duration.ofSeconds(15)).click();
-        audioVideoSubcategory.shouldBe(visible, Duration.ofSeconds(15));
+        clickElectronicsCategory();
+        waitForAudioVideoSubcategory();
         return this;
     }
 
-    /** Переходит в подкатегорию «Аудио- и видеотехника». */
     public CategoryPage openAudioVideoCategory() {
-        audioVideoSubcategory.shouldBe(visible, Duration.ofSeconds(15)).click();
+        clickAudioVideoSubcategory();
         return new CategoryPage().waitUntilOpened();
     }
 
-    /** Открывает окно изменения адреса доставки через город в шапке. */
     public DeliveryAddressModal openDeliveryAddress() {
-        dismissBlockingOverlays(Duration.ofSeconds(2));
-        getVisibleDeliveryCityLabel().click();
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+        clickDeliveryCityLabel();
         return new DeliveryAddressModal().waitUntilOpened();
     }
 
-    /** Ждёт отображение выбранного города в шапке. */
     public MainPage waitUntilDeliveryCityDisplayed(String city) {
         getVisibleDeliveryCityLabel()
-                .shouldHave(exactText(city), Duration.ofSeconds(30));
+                .shouldHave(exactText(city), Duration.ofSeconds(VERY_LONG_TIMEOUT_SEC));
         return this;
     }
 
-    /** Возвращает текущий город доставки из шапки. */
     public String getDeliveryCity() {
         return getVisibleDeliveryCityLabel().getText();
     }
 
+    // ПРИВАТНЫЕ МЕТОДЫ
+
+    private void openPage() {
+        open(URL);
+    }
+
+    private void waitForPageReady() {
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+        searchInput.waitUntilEditable(Duration.ofMinutes(WAIT_EDITABLE_TIMEOUT_MIN));
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+    }
+
+    private void enterSearchQuery(String query) {
+        searchInput.fill(query);
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+    }
+
+    private void submitSearch() {
+        dismissBlockingOverlays(Duration.ofSeconds(MEDIUM_TIMEOUT_SEC));
+        searchButton.click();
+    }
+
+    private void waitForSuggestions() {
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+        searchSuggestions.shouldHave(
+                sizeGreaterThan(0),
+                Duration.ofSeconds(LONG_TIMEOUT_SEC)
+        );
+    }
+
+    private void openLanguagePanel() {
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+        for (int attempt = 0; attempt < LANGUAGE_SWITCH_ATTEMPTS; attempt++) {
+            SelenideElement languageSwitcher = getVisibleLanguageSwitcher();
+            actions().moveToElement(languageSwitcher).click().perform();
+            if (languagePanel.is(visible, Duration.ofSeconds(LANGUAGE_PANEL_CHECK_SEC))) {
+                return;
+            }
+        }
+        languagePanel.shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC));
+    }
+
+    private void selectLanguageByFlag(String flagCode) {
+        openLanguagePanel();
+        $x(String.format(LANGUAGE_FLAG_XPATH_TEMPLATE, flagCode))
+                .shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC))
+                .click();
+        languagePanel.should(disappear, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC));
+    }
+
+    private SelenideElement getVisibleLanguageSwitcher() {
+        return languageSwitchers.filterBy(visible).first()
+                .shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC));
+    }
+
+    private void clickCatalogButton() {
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+        catalogButton.shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC))
+                .click();
+    }
+
+    private void waitForCatalogPopup() {
+        catalogPopup.shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC));
+    }
+
+    private void clickElectronicsCategory() {
+        electronicsCategory.shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC))
+                .click();
+    }
+
+    private void waitForAudioVideoSubcategory() {
+        audioVideoSubcategory.shouldBe(
+                visible,
+                Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC)
+        );
+    }
+
+    private void clickAudioVideoSubcategory() {
+        audioVideoSubcategory.shouldBe(
+                visible,
+                Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC)
+        ).click();
+    }
+
+    private void clickDeliveryCityLabel() {
+        getVisibleDeliveryCityLabel().click();
+    }
+
     private SelenideElement getVisibleDeliveryCityLabel() {
         return deliveryCityLabels.filterBy(visible).first()
-                .shouldBe(visible, Duration.ofSeconds(15));
+                .shouldBe(visible, Duration.ofSeconds(EXTRA_LONG_TIMEOUT_SEC));
     }
 }
