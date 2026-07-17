@@ -30,6 +30,12 @@ import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
  */
 public class BasePage {
 
+    // СТАТИЧЕСКИЕ ПОЛЯ (константы)
+    private static final int SHORT_TIMEOUT_MS = 300;
+    private static final int MEDIUM_TIMEOUT_SEC = 10;
+    private static final int BROWSER_SWITCH_TIMEOUT_SEC = 10;
+    private static final int ACTIVE_WAIT_SEC = 10;
+
     private final ElementsCollection locationConfirmButtons = $$x(
             "//div[contains(@class,'ShipToHeaderItem_GeoTooltip__tooltip')]" +
                     "//button[normalize-space()='Да, верно' or contains(normalize-space(), 'Yes')]");
@@ -37,61 +43,58 @@ public class BasePage {
             "//*[contains(@class,'PrivacyPolicyBanner')]" +
                     "//button[normalize-space()='Понятно' or normalize-space()='OK']");
 
-    /**
-     * Открывает страницу по переданному URL.
-     */
+    // КОНСТРУКТОРЫ
+    public BasePage() {
+        // пустой конструктор
+    }
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+
     protected void open(String url) {
         Selenide.open(url);
     }
 
-    /** Закрывает редкие системные слои, которые могут перекрыть элементы страницы. */
     protected void dismissBlockingOverlays() {
-        dismissBlockingOverlays(Duration.ofMillis(300));
+        dismissBlockingOverlays(Duration.ofMillis(SHORT_TIMEOUT_MS));
     }
 
-    /** Динамически ждёт позднее геоподтверждение и закрывает известные блокирующие слои. */
     protected void dismissBlockingOverlays(Duration timeout) {
         dismissVisibleElement(locationConfirmButtons, timeout);
-        dismissVisibleElement(privacyConfirmButtons, Duration.ofMillis(300));
+        dismissVisibleElement(
+                privacyConfirmButtons,
+                Duration.ofMillis(SHORT_TIMEOUT_MS)
+        );
     }
 
     private void dismissVisibleElement(ElementsCollection elements, Duration timeout) {
         SelenideElement visibleElement = elements.findBy(visible);
         if (visibleElement.is(visible, timeout)) {
             executeJavaScript("arguments[0].click();", visibleElement);
-            visibleElement.should(disappear, Duration.ofSeconds(10));
+            visibleElement.should(disappear, Duration.ofSeconds(MEDIUM_TIMEOUT_SEC));
         }
     }
 
-    /**
-     * Возвращает заголовок текущей страницы.
-     */
     public String getTitle() {
         return Selenide.title();
     }
 
-    /**
-     * Обновляет текущую страницу.
-     */
     public void refresh() {
         Selenide.refresh();
     }
 
-    /**
-     * Активирует текущую страницу после переходов, где AliExpress оставляет окно без фокуса.
-     */
     protected void activatePage() {
         clickBrowserWindow();
         executeJavaScript("window.focus();");
-        SelenideElement body = $("body").shouldBe(visible, Duration.ofSeconds(10));
+        SelenideElement body = $("body")
+                .shouldBe(visible, Duration.ofSeconds(ACTIVE_WAIT_SEC));
         actions().moveToElement(body).click().perform();
         executeJavaScript("if (document.body) document.body.focus();");
     }
 
-    /** Переключается на новую вкладку и закрывает предыдущие, если сайт открыл её при переходе. */
-    protected void switchToNewWindowIfOpened(Set<String> previousWindowHandles,
-                                               String expectedUrlPart) {
-        new WebDriverWait(getWebDriver(), Duration.ofSeconds(10))
+    protected void switchToNewWindowIfOpened(
+            Set<String> previousWindowHandles,
+            String expectedUrlPart) {
+        new WebDriverWait(getWebDriver(), Duration.ofSeconds(BROWSER_SWITCH_TIMEOUT_SEC))
                 .until(driver -> driver.getWindowHandles().size() > previousWindowHandles.size()
                         || driver.getCurrentUrl().contains(expectedUrlPart));
 
@@ -114,9 +117,6 @@ public class BasePage {
         switchTo().window(windowToKeep);
     }
 
-    /**
-     * Выполняет системный клик по окну браузера, чтобы Chrome получил фокус ОС.
-     */
     private void clickBrowserWindow() {
         try {
             WebDriver driver = getWebDriver();
