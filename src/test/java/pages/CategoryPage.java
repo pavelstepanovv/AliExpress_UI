@@ -15,24 +15,35 @@ import static com.codeborne.selenide.WebDriverConditions.urlContaining;
 /** Page Object страницы товарной подкатегории AliExpress. */
 public class CategoryPage extends BasePage {
 
+    // СТАТИЧЕСКИЕ ПОЛЯ (константы)
+    private static final int SHORT_TIMEOUT_SEC = 2;
+    private static final int LONG_TIMEOUT_SEC = 30;
+    private static final int PAGE_LOAD_TIMEOUT_MIN = 3;
+
     private static final String AUDIO_VIDEO_URL_PATH = "/category/16046/audio-video";
 
+    // ПОЛЯ ЭКЗЕМПЛЯРА
     private final SelenideElement audioVideoBreadcrumb = $x(
             "//a[contains(@href,'/category/16046/audio-video')]" +
                     "//*[normalize-space()='Аудио- и видеотехника']");
     private final ElementsCollection productCards = $$x(
             "//*[contains(@class,'CommonShelf_Snippet__product')]");
 
-    /** Ждёт нужный URL, хлебные крошки и непустой список товаров. */
+    // КОНСТРУКТОРЫ
+    public CategoryPage() {
+        // пустой конструктор
+    }
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+
     public CategoryPage waitUntilOpened() {
-        webdriver().shouldHave(urlContaining(AUDIO_VIDEO_URL_PATH), Duration.ofMinutes(3));
-        dismissBlockingOverlays(Duration.ofSeconds(2));
-        audioVideoBreadcrumb.shouldBe(visible, Duration.ofSeconds(30));
-        productCards.shouldHave(sizeGreaterThan(0), Duration.ofSeconds(30));
+        webdriver().shouldHave(urlContaining(AUDIO_VIDEO_URL_PATH), Duration.ofMinutes(PAGE_LOAD_TIMEOUT_MIN));
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+        audioVideoBreadcrumb.shouldBe(visible, Duration.ofSeconds(LONG_TIMEOUT_SEC));
+        productCards.shouldHave(sizeGreaterThan(0), Duration.ofSeconds(LONG_TIMEOUT_SEC));
         return this;
     }
 
-    /** Возвращает количество отображаемых товарных карточек. */
     public int getProductsCount() {
         return productCards.size();
     }
