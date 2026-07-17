@@ -17,8 +17,20 @@ import static com.codeborne.selenide.Selenide.executeJavaScript;
 
 public class CartPage extends BasePage {
 
+    // СТАТИЧЕСКИЕ ПОЛЯ (константы)
+    private static final int SHORT_TIMEOUT_SEC = 2;
+    private static final int MEDIUM_TIMEOUT_SEC = 10;
+    private static final int LONG_TIMEOUT_SEC = 20;
+    private static final int EXTRA_LONG_TIMEOUT_SEC = 30;
+    private static final int PRODUCT_WAIT_TIMEOUT_SEC = 30;
+    private static final int QUANTITY_UPDATE_TIMEOUT_SEC = 10;
+    private static final int TOTAL_RECALC_TIMEOUT_SEC = 20;
+    private static final int REMOVE_TIMEOUT_SEC = 15;
+    private static final int EMPTY_TIMEOUT_SEC = 20;
+
     private static final String URL = "https://aliexpress.ru/cart";
 
+    // ПОЛЯ ЭКЗЕМПЛЯРА
     private final ElementsCollection productContainers = $$x("//*[@data-testid='productContainer']");
     private final Button removeSelectedButton = Button.byTestId("removeSelectedButton");
     private final Button popupRemoveButton = Button.byTestId("popupRemove");
@@ -35,25 +47,28 @@ public class CartPage extends BasePage {
     private final SelenideElement totalItemsText = $x("//*[@id='snow_cart_total_price_anchor']//*[contains(normalize-space(), 'товар') and contains(normalize-space(), 'шт.')]");
     private final SelenideElement totalPriceText = $x("(//*[@id='snow_cart_total_price_anchor']//span[contains(normalize-space(), '₽')])[1]");
 
-    /** Открывает корзину независимо от того, есть в ней товары или нет. */
+    // КОНСТРУКТОРЫ
+    public CartPage() {
+        // пустой конструктор
+    }
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+
     public CartPage open() {
         open(URL);
-        dismissBlockingOverlays(Duration.ofSeconds(2));
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
         cartState.shouldBe(visible, Duration.ofMinutes(3));
-        dismissBlockingOverlays(Duration.ofSeconds(2));
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
         return this;
     }
 
-    /**
-     * Ждет загрузки корзины и товара внутри нее.
-     */
     public CartPage waitUntilOpened() {
-        dismissBlockingOverlays(Duration.ofSeconds(2));
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
         activatePage();
-        productContainers.shouldHave(sizeGreaterThan(0), Duration.ofSeconds(30));
-        productTitle.shouldBe(visible, Duration.ofSeconds(30));
-        productQuantity.shouldBe(visible, Duration.ofSeconds(30));
-        totalPriceBlock.shouldBe(visible, Duration.ofSeconds(30));
+        productContainers.shouldHave(sizeGreaterThan(0), Duration.ofSeconds(PRODUCT_WAIT_TIMEOUT_SEC));
+        productTitle.shouldBe(visible, Duration.ofSeconds(PRODUCT_WAIT_TIMEOUT_SEC));
+        productQuantity.shouldBe(visible, Duration.ofSeconds(PRODUCT_WAIT_TIMEOUT_SEC));
+        totalPriceBlock.shouldBe(visible, Duration.ofSeconds(PRODUCT_WAIT_TIMEOUT_SEC));
         return this;
     }
 
@@ -69,8 +84,11 @@ public class CartPage extends BasePage {
         while (getProductQuantity() < expectedQuantity) {
             dismissBlockingOverlays();
             int currentQuantity = getProductQuantity();
-            incrementButton.shouldBe(visible, Duration.ofSeconds(10)).click();
-            productQuantity.shouldHave(attribute("data-product-quantity", String.valueOf(currentQuantity + 1)), Duration.ofSeconds(10));
+            incrementButton.shouldBe(visible, Duration.ofSeconds(MEDIUM_TIMEOUT_SEC)).click();
+            productQuantity.shouldHave(
+                    attribute("data-product-quantity", String.valueOf(currentQuantity + 1)),
+                    Duration.ofSeconds(QUANTITY_UPDATE_TIMEOUT_SEC)
+            );
         }
         return this;
     }
@@ -80,8 +98,8 @@ public class CartPage extends BasePage {
     }
 
     public CartPage waitTotalRecalculatedForQuantity(int expectedQuantity) {
-        totalItemsText.shouldHave(text(expectedQuantity + " шт."), Duration.ofSeconds(20));
-        totalPriceText.shouldBe(visible, Duration.ofSeconds(20));
+        totalItemsText.shouldHave(text(expectedQuantity + " шт."), Duration.ofSeconds(TOTAL_RECALC_TIMEOUT_SEC));
+        totalPriceText.shouldBe(visible, Duration.ofSeconds(TOTAL_RECALC_TIMEOUT_SEC));
         return this;
     }
 
@@ -89,21 +107,19 @@ public class CartPage extends BasePage {
         return Integer.parseInt(totalPriceText.getText().replaceAll("[^0-9]", ""));
     }
 
-    /** Удаляет все товары через интерфейс, сохраняя cookie общей сессии. */
     public CartPage removeAllProducts() {
         if (!productContainers.isEmpty()) {
             dismissBlockingOverlays();
-            removeSelectedButton.clickWhenEnabled(Duration.ofSeconds(15));
-            popupRemoveButton.clickWhenEnabled(Duration.ofSeconds(15));
-            productContainers.shouldHave(size(0), Duration.ofSeconds(20));
+            removeSelectedButton.clickWhenEnabled(Duration.ofSeconds(REMOVE_TIMEOUT_SEC));
+            popupRemoveButton.clickWhenEnabled(Duration.ofSeconds(REMOVE_TIMEOUT_SEC));
+            productContainers.shouldHave(size(0), Duration.ofSeconds(EMPTY_TIMEOUT_SEC));
         }
-        emptyCartTitle.shouldBe(visible, Duration.ofSeconds(20));
+        emptyCartTitle.shouldBe(visible, Duration.ofSeconds(EMPTY_TIMEOUT_SEC));
         return this;
     }
 
-    /** Проверяет видимый экран пустой корзины и отсутствие товарных контейнеров. */
     public boolean isCartEmpty() {
-        productContainers.shouldHave(size(0), Duration.ofSeconds(20));
-        return emptyCartTitle.is(visible, Duration.ofSeconds(20));
+        productContainers.shouldHave(size(0), Duration.ofSeconds(EMPTY_TIMEOUT_SEC));
+        return emptyCartTitle.is(visible, Duration.ofSeconds(EMPTY_TIMEOUT_SEC));
     }
 }
