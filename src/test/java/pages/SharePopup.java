@@ -12,20 +12,28 @@ import static com.codeborne.selenide.Selenide.$$x;
 /** Компонент окна с вариантами отправки ссылки на товар. */
 public class SharePopup extends BasePage {
 
-    private final Item popup = Item.byClass(
-            "SharingPdpTooltip__showTooltip__");
-    private final Item copyLinkButton = Item.byClass(
-            "SharingPdpCopyBlock__copyButton__");
+    // СТАТИЧЕСКИЕ ПОЛЯ (константы)
+    private static final int POPUP_TIMEOUT_SEC = 15;
+
+    // ПОЛЯ ЭКЗЕМПЛЯРА
+    private final Item popup = Item.byClass("SharingPdpTooltip__showTooltip__");
+    private final Item copyLinkButton = Item.byClass("SharingPdpCopyBlock__copyButton__");
     private final ElementsCollection socialIcons = $$x(
             "//*[contains(@class,'SharingPdpTooltip__showTooltip__')]" +
                     "//*[contains(@class,'SharingPdpSocialElements__socialIcon__')]");
 
-    /** Ждёт появление окна, кнопки копирования и иконок социальных сетей. */
+    // КОНСТРУКТОРЫ
+    public SharePopup() {
+        // пустой конструктор
+    }
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+
     public SharePopup waitUntilOpened() {
-        popup.waitUntilVisible(Duration.ofSeconds(15));
-        copyLinkButton.waitUntilVisible(Duration.ofSeconds(15));
+        popup.waitUntilVisible(Duration.ofSeconds(POPUP_TIMEOUT_SEC));
+        copyLinkButton.waitUntilVisible(Duration.ofSeconds(POPUP_TIMEOUT_SEC));
         socialIcons.filterBy(visible)
-                .shouldHave(sizeGreaterThan(0), Duration.ofSeconds(15));
+                .shouldHave(sizeGreaterThan(0), Duration.ofSeconds(POPUP_TIMEOUT_SEC));
         return this;
     }
 
