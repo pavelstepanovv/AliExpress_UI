@@ -12,18 +12,27 @@ import static com.codeborne.selenide.WebDriverConditions.urlContaining;
 /** Page Object полного блока отзывов о товаре. */
 public class ReviewsPage extends BasePage {
 
+    // СТАТИЧЕСКИЕ ПОЛЯ (константы)
+    private static final int PAGE_LOAD_TIMEOUT_SEC = 30;
+    private static final int SHORT_TIMEOUT_SEC = 2;
+
     private final SelenideElement overallRating = $x(
             "//*[contains(@class,'RedReviewsProductDescription__ratingContainer__')]");
 
-    /** Ждёт переход на страницу отзывов и появление общего рейтинга. */
+    // КОНСТРУКТОРЫ
+    public ReviewsPage() {
+        // пустой конструктор
+    }
+
+    // ПУБЛИЧНЫЕ МЕТОДЫ
+
     public ReviewsPage waitUntilOpened() {
-        webdriver().shouldHave(urlContaining("/reviews"), Duration.ofSeconds(30));
-        dismissBlockingOverlays(Duration.ofSeconds(2));
-        overallRating.shouldBe(visible, Duration.ofSeconds(30));
+        webdriver().shouldHave(urlContaining("/reviews"), Duration.ofSeconds(PAGE_LOAD_TIMEOUT_SEC));
+        dismissBlockingOverlays(Duration.ofSeconds(SHORT_TIMEOUT_SEC));
+        overallRating.shouldBe(visible, Duration.ofSeconds(PAGE_LOAD_TIMEOUT_SEC));
         return this;
     }
 
-    /** Проверяет, что общий рейтинг товара отображается. */
     public boolean isOverallRatingDisplayed() {
         return overallRating.isDisplayed();
     }
